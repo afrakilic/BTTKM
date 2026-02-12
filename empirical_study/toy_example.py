@@ -13,21 +13,24 @@ from TT_helpers import (generate_tt_cores,
                         pure_power_features,
                         generate_delta_lambda)
 
-D = 4
-Ms = [2,2, 5, 2]       # mode sizes per core (length D)
-Rs = [1, 3, 2, 2, 1]  
+D = 3
+Ms = [3, 3, 3]       # mode sizes per core (length D)
+Rs = [1, 3, 3, 1]  
 N = 100
 
 rng = np.random.default_rng(42)
 X = rng.random((N, D))
-W_D_true = generate_tt_cores(D=D, Ms=Ms, Rs=Rs, seed=1, st = 10)
+W_D_true = generate_tt_cores(D=D, Ms=Ms, Rs=Rs, seed=1, st = 1)
 Phi = pure_power_features(X,Ms=Ms) 
-y = compute_G_left(Phi, W_D_true, N) + 1e-3 * rng.standard_normal((N, 1))
+y = compute_G_left(Phi, W_D_true, N) + 1e-10 * rng.standard_normal((N, 1))
+
+#initialization
 Sigma = init_sigmas(D=D, Ms=Ms, Rs=Rs)
 tau = 1
 deltas, lambdas = generate_delta_lambda(Ms=Ms, Rs=Rs)
+W_D = generate_tt_cores(D=D, Ms=Ms, Rs=Rs, seed=1)
 
-W_D = generate_tt_cores(D=D, Ms=Ms, Rs=Rs)
+#model learning
 for it in range (10):
     for d in range(D):
         G_left = compute_G_left(Phi[:d], W_D[:d], N)
@@ -41,7 +44,26 @@ for it in range (10):
                                         R_next=W_D[d].shape[2])
         
         Sigma[d] = np.linalg.inv(tau * ggT + np.kron(np.kron(lambdas[d+1]* np.eye(Rs[d+1]), deltas[d]*np.eye(Ms[d])), lambdas[d]*np.eye(Rs[d])))
-        W_D[d] = (tau * Sigma[d] @ Gd.T @ y).reshape(W_D[d].shape[0],W_D[d].shape[1], W_D[d].shape[2])  
+        W_D[d] = (tau * Sigma[d] @ Gd.T @ y).reshape(W_D[d].shape, order="F")
         del G_left, G_right, Gd, H_left, H_right, ggT
 
-print(G_left)
+
+y_hat = compute_G_left(Phi, W_D, N)
+
+# Observation index
+x = np.arange(len(y))
+
+# RMSE
+rmse = np.sqrt(np.mean((y_hat - y) ** 2))
+print("RMSE:", rmse)
+
+# Scatter plot
+plt.figure()
+plt.scatter(x, y, label="y (true)")
+plt.scatter(x, y_hat, label="y_hat (predicted)")
+
+plt.xlabel("Observation #")
+plt.ylabel("Value")
+plt.title(f"y and y_hat vs observations (RMSE = {rmse:.4f})")
+plt.legend()
+plt.show()

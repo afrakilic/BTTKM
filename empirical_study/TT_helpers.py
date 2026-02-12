@@ -67,7 +67,7 @@ def compute_G_right(Phis, Ws, N):
     G = np.ones((N_, 1))  # corresponds to G_>D
 
     for k in range(D):
-        G = khatri_rao_rows(Phis_r[k], G) @ Ws_r[k].T
+        G = khatri_rao_rows( G, Phis_r[k]) @ Ws_r[k].T
 
     return G
 
@@ -138,12 +138,12 @@ def Ew_kronW_left(W, Sigma, R, M, Rn):
              .reshape(RM * RM, Rn * Rn)
     )
 
-    K = np.kron(W.T, W.T) + Sigma_tilde
+    K = np.kron(W.T, W.T) # + Sigma_tilde
     T = K.reshape(M, R, M, R, Rn, Rn)
     T_perm = np.transpose(T, (0, 2, 1, 3, 4, 5))
     result= T_perm.reshape(M*M*R*R, Rn*Rn)
 
-    return result #np.kron(W.T, W.T) + Sigma_tilde
+    return result
 
 
 
@@ -163,11 +163,11 @@ def Ew_kronW_right(W, Sigma, R, M, Rn):
              .transpose(2, 5, 0, 1, 3, 4)
              .reshape(R * R, MRn * MRn)
     )
-    K = np.kron(W.T, W.T) + Sigma_tilde.T
+    K = np.kron(W.T, W.T) # + Sigma_tilde.T
     T = K.reshape(Rn, M, Rn, M, R, R)
     T_perm = np.transpose(T, (1, 3, 0, 2, 4, 5))
     result = T_perm.reshape(M*M*Rn*Rn, R*R)
-    return result #np.kron(W.T, W.T) + Sigma_tilde.T
+    return result
 
 
 def compute_H_left(Phis, Ws, Sigmas, N):
@@ -312,7 +312,7 @@ def pure_power_features(X, M=8, Ms=None, eps=1e-12):
     return Phis
 
 
-def generate_delta_lambda(Ms, Rs, g0 = 1e-6, h0 = 1e-6, c0 = 1e-6, d0= 1e-6):
+def generate_delta_lambda(Ms, Rs, g0 = 1e-7, h0 = 1e-6, c0 = 1e-6, d0= 1e-6):
     """
     Generate delta_d (size M_d) and lambda_k (size R_k) vectors.
 
