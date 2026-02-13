@@ -1,4 +1,9 @@
-import numpy as np
+
+import os, sys
+
+sys.path.append(os.getcwd())
+from config import *  # Import everything from config.py
+
 
 
 def generate_tt_cores(D, R=4, M=8, Rs=None, Ms=None, seed=None, st = 1):
@@ -89,6 +94,12 @@ def tt_core_unfolding(T_list, mode):
     unfolded_list : list of np.ndarray
         Same length as T_list, each unfolded according to mode.
     """
+
+    single_tensor = False
+    if isinstance(T_list, np.ndarray):
+        T_list = [T_list]
+        single_tensor = True
+
     if mode not in (1, 2, 3):
         raise ValueError("mode must be 1, 2, or 3")
 
@@ -138,7 +149,7 @@ def Ew_kronW_left(W, Sigma, R, M, Rn):
              .reshape(RM * RM, Rn * Rn)
     )
 
-    K = np.kron(W.T, W.T) # + Sigma_tilde
+    K = np.kron(W.T, W.T)  + Sigma_tilde
     T = K.reshape(M, R, M, R, Rn, Rn)
     T_perm = np.transpose(T, (0, 2, 1, 3, 4, 5))
     result= T_perm.reshape(M*M*R*R, Rn*Rn)
@@ -163,7 +174,7 @@ def Ew_kronW_right(W, Sigma, R, M, Rn):
              .transpose(2, 5, 0, 1, 3, 4)
              .reshape(R * R, MRn * MRn)
     )
-    K = np.kron(W.T, W.T) # + Sigma_tilde.T
+    K = np.kron(W.T, W.T)  + Sigma_tilde.T
     T = K.reshape(Rn, M, Rn, M, R, R)
     T_perm = np.transpose(T, (1, 3, 0, 2, 4, 5))
     result = T_perm.reshape(M*M*Rn*Rn, R*R)
@@ -256,16 +267,10 @@ def init_sigmas(D, R=4, M=8, Rs=None, Ms=None):
 
 
 def reshape_permute_ggT_to_sigma(ggT, R_d, M_d, R_next):
+
     """
     ggT: shape (M_d*R_d^2, M_d*R_next^2)
     returns Sigma: shape (R_d*M_d*R_next, R_d*M_d*R_next)
-
-    Interpretation:
-      ggT rows  index (m, r_d, r_d')
-      ggT cols  index (m', r_next, r_next')
-    Reindex to:
-      Sigma rows index (r_d, m, r_next)
-      Sigma cols index (r_d', m', r_next')
     """
 
     n = R_d * M_d * R_next
@@ -311,21 +316,3 @@ def pure_power_features(X, M=8, Ms=None, eps=1e-12):
 
     return Phis
 
-
-def generate_delta_lambda(Ms, Rs, g0 = 1e-7, h0 = 1e-6, c0 = 1e-6, d0= 1e-6):
-    """
-    Generate delta_d (size M_d) and lambda_k (size R_k) vectors.
-
-    Args:
-        Ms : list of mode sizes (length D)
-        Rs : list of TT ranks (length D+1)
-
-    Returns:
-        deltas  : list of length D, deltas[d] has shape (M_d,)
-        lambdas : list of length D+1, lambdas[k] has shape (R_k,)
-    """
-
-    deltas = [g0/h0 * np.ones(m) for m in Ms]
-    lambdas = [c0/d0 * np.ones(r) for r in Rs]
-
-    return deltas, lambdas
