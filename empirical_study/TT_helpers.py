@@ -260,7 +260,7 @@ def init_sigmas(D, R=4, M=8, Rs=None, Ms=None):
     Sigmas = []
     for d in range(D):
         n_d = Rs[d] * Ms[d] * Rs[d + 1]
-        Sigmas.append(0.1* np.eye(n_d))
+        Sigmas.append(0.1 * np.eye(n_d))
 
     return Sigmas
 

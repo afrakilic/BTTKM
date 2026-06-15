@@ -53,8 +53,8 @@ for it in range (10):
                                         R_d=W_D[d].shape[0],
                                         M_d=W_D[d].shape[1],
                                         R_next=W_D[d].shape[2])
-        
-        Sigma[d] = np.linalg.inv(tau * ggT + np.kron(np.kron(lambdas[d+1]* np.eye(Rs[d+1]), deltas[d]*np.eye(Ms[d])), lambdas[d]*np.eye(Rs[d])))
+        # ggT = Gd.T@Gd
+        Sigma[d] = np.linalg.pinv(tau * ggT + np.kron(np.kron(lambdas[d+1]* np.eye(Rs[d+1]), deltas[d]*np.eye(Ms[d])), lambdas[d]*np.eye(Rs[d])))
         W_D[d] = (tau * Sigma[d] @ Gd.T @ y).reshape(W_D[d].shape, order="F")
 
 
