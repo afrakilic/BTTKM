@@ -260,7 +260,7 @@ def init_sigmas(D, R=4, M=8, Rs=None, Ms=None):
     Sigmas = []
     for d in range(D):
         n_d = Rs[d] * Ms[d] * Rs[d + 1]
-        Sigmas.append(0.1 * np.eye(n_d))
+        Sigmas.append(0.1* np.eye(n_d))
 
     return Sigmas
 
@@ -288,7 +288,7 @@ def reshape_permute_ggT_to_sigma(ggT, R_d, M_d, R_next):
 
 
 
-def pure_power_features(X, M=8, Ms=None, eps=1e-12):
+def pure_power_features_TT(X, M=8, Ms=None, eps=1e-12):
     """
     Pure-power polynomial features.
 

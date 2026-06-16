@@ -10,8 +10,9 @@ from TT_helpers import (generate_tt_cores,
                         compute_H_right,
                         khatri_rao_rows, 
                         reshape_permute_ggT_to_sigma,
-                        pure_power_features,
+                        pure_power_features_TT,
                         tt_core_unfolding)
+from functions.utils import pure_power_features_full
 
 
 
@@ -76,7 +77,7 @@ class bttkm:
 
 
         W_D = generate_tt_cores(D=D, Ms=Ms, Rs=Rs, seed=1)
-        Phi = pure_power_features(X,Ms=Ms) 
+        Phi = pure_power_features_TT(X,Ms=Ms) 
         Sigma = init_sigmas(D=D, Ms=Ms, Rs=Rs)
         pbar = trange(max_iter, desc="Running", leave=True)
         for it in pbar:
@@ -106,7 +107,7 @@ class bttkm:
                     Sigma2 = tt_core_unfolding(Sigma_cored, mode=2)[0]
                     W2 = tt_core_unfolding(W_D[d], mode=2)[0]
                     ewdel2 = np.diag(W2 @ Kdel @ W2.T) + Sigma2 @ np.kron(lambdas[d+1], lambdas[d])
-                    gNs[d] = g0s[d] + 0.5 * (lambdas[d].size * lambdas[d+1].size)
+                    gNs[d] = g0s[d] + 0.5 * (lambdas[d].size * lambdas[d+1].size )
                     hNs[d] = h0s[d] + 0.5 * ewdel2
                     deltas[d] = gNs[d] / hNs[d]
 
@@ -116,6 +117,7 @@ class bttkm:
                     if d>0:
                         Klam1= np.kron(lambdas[d+1]*np.eye(lambdas[d+1].size),deltas[d]*np.eye(deltas[d].size))
                         Klam2= np.kron(deltas[d-1]*np.eye(deltas[d-1].size), lambdas[d-1]*np.eye(lambdas[d-1].size))
+                        Sigma_cored = np.diag(Sigma[d]).reshape(W_D[d].shape, order="F")
                         Sigma1= tt_core_unfolding(Sigma_cored, mode=1)[0]
                         W1 =  tt_core_unfolding(W_D[d], mode=1)[0]
                         ewdel1 = np.diag(W1 @ Klam1 @ W1.T) + Sigma1 @ np.kron(lambdas[d+1],deltas[d])
@@ -145,8 +147,8 @@ class bttkm:
             tau = a_N / b_N
 
             #fit metric 
-            tss = np.sum(abs(Y - np.mean(Y)))
-            rss = np.sum(abs(Y - y_hat))
+            tss = np.sum((Y.reshape(-1,1) - np.mean(Y))**2)
+            rss = np.sum((Y.reshape(-1,1) - y_hat)**2)
             Fit = 1 - (rss / tss)  # R-squared
             
             pbar.set_postfix(Fit=f"{float(Fit):.4f}")
@@ -198,7 +200,7 @@ class bttkm:
             Ms = [I] * D  
             Rs = [1] + [R] * (D - 1) + [1] 
             # Feature map
-            Phi = pure_power_features(X,Ms=Ms) 
+            Phi = pure_power_features_TT(X,Ms=Ms) 
             y_hat = compute_G_left(Phi, self.W_D, N)
 
             return y_hat

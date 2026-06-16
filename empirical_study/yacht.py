@@ -10,7 +10,7 @@ from config import *  # Import everything from config.py
 from BTTKM import bttkm
 
 
-# Load the dataset
+# # Load the dataset
 df = pd.read_csv("data/yacht.csv", header=None)
 df.columns = df.iloc[0]
 df = df[1:]
@@ -23,14 +23,24 @@ df = df.astype(float)
 X = df[:, 0:6]  # features
 y = df[:, 6].reshape(-1, 1)  # target
 
+# df = pd.read_csv("data/energy.csv", header=None)
+# df.columns = df.iloc[0]
+# df = df[1:]
+# df.reset_index(drop=True, inplace=True)
+# df = df.values
+# df = df.astype(float)
+
+# # Split features and target
+# X = df[:, 0:9]  # features
+# y = df[:, 9].reshape(-1, 1)  # target
 
 # hyper-parameters
-input_dimension = 20
-max_rank = 3
+input_dimension = 25
+max_rank = 5
 
-a, b = 1e-3, 1e-3
+a, b = 1, 1e-3
 c, d = 1e-5 , 1e-6 
-g, h = 1e-5 , 1e-6 
+g, h = 1e-6 , 1e-6 
 
 
 R_effective = []
@@ -47,15 +57,15 @@ for i in range(1):
     X_train, X_test = X[indices[:split_index]], X[indices[split_index:]]
     y_train, y_test = y[indices[:split_index]], y[indices[split_index:]]
 
-    # X_mean = X_train.mean(axis=0)
-    # X_std = X_train.std(axis=0)
-    # X_std[X_std == 0] = 1
-    # X_train = (X_train - X_mean) / X_std
-    # X_test = (X_test - X_mean) / X_std  # Use train stats
+    X_mean = X_train.mean(axis=0)
+    X_std = X_train.std(axis=0)
+    X_std[X_std == 0] = 1
+    X_train = (X_train - X_mean) / X_std
+    X_test = (X_test - X_mean) / X_std  # Use train stats
 
-    # y_mean = y_train.mean()
-    # y_std = y_train.std()
-    # y_train = (y_train - y_mean) / y_std
+    y_mean = y_train.mean()
+    y_std = y_train.std()
+    y_train = (y_train - y_mean) / y_std
 
     # train the model
     model =bttkm(X_train.shape[1])
@@ -71,11 +81,11 @@ for i in range(1):
         shape_parameter_delta=g,
         scale_parameter_delta=h,
         max_iter=10,
-        precision_update=False,
+        precision_update=True,
         lambda_update=True,
         delta_update=True,
         plot_results=False,
-        prune_rank=True,
+        prune_rank=False,
     )
 
     # Predict (mse is returned by the predict function)
@@ -83,14 +93,14 @@ for i in range(1):
         features=X_test, input_dimension=input_dimension, rank = max_rank
     )
 
-    # prediction_mean_unscaled = prediction_mean * y_std + y_mean
+    prediction_mean_unscaled = prediction_mean * y_std + y_mean
     # prediction_std_unscaled = prediction_std * y_std
 
     # rmse
-    # rmse = np.sqrt(np.mean((prediction_mean_unscaled - y_test) ** 2))
-    # rmse_values.append(rmse)
+    rmse = np.sqrt(np.mean((prediction_mean_unscaled - y_test) ** 2))
+    rmse_values.append(rmse)
 
-    rmse = np.sqrt(np.mean((y_test - prediction_mean) ** 2))
+    # rmse = np.sqrt(np.mean((y_test - prediction_mean) ** 2))
     print(f"RMSE: {rmse:.4f}")
 
 
@@ -102,7 +112,7 @@ plt.figure(figsize=(10, 5))
 
 # Plot 1: Predicted vs True (scatter)
 plt.subplot(1, 2, 1)
-plt.scatter(y_test, prediction_mean, alpha=0.6, edgecolors='k', linewidths=0.5)
+plt.scatter(y_test, prediction_mean_unscaled, alpha=0.6, edgecolors='k', linewidths=0.5)
 plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', label='Perfect fit')
 plt.xlabel("True Values")
 plt.ylabel("Predicted Values")
@@ -113,7 +123,7 @@ plt.legend()
 plt.subplot(1, 2, 2)
 sort_idx = np.argsort(y_test.flatten())
 plt.plot(y_test.flatten()[sort_idx], label="True", linewidth=1.5)
-plt.plot(prediction_mean.flatten()[sort_idx], label="Predicted", linewidth=1.5, linestyle='--')
+plt.plot(prediction_mean_unscaled.flatten()[sort_idx], label="Predicted", linewidth=1.5, linestyle='--')
 plt.xlabel("Sample Index (sorted by true value)")
 plt.ylabel("Target Value")
 plt.title("Predictions vs True Values")
