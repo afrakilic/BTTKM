@@ -23,24 +23,13 @@ df = df.astype(float)
 X = df[:, 0:6]  # features
 y = df[:, 6].reshape(-1, 1)  # target
 
-# df = pd.read_csv("data/energy.csv", header=None)
-# df.columns = df.iloc[0]
-# df = df[1:]
-# df.reset_index(drop=True, inplace=True)
-# df = df.values
-# df = df.astype(float)
-
-# # Split features and target
-# X = df[:, 0:9]  # features
-# y = df[:, 9].reshape(-1, 1)  # target
-
 # hyper-parameters
-input_dimension = 25
+input_dimension = 20
 max_rank = 5
 
-a, b = 1, 1e-3
-c, d = 1e-5 , 1e-6 
-g, h = 1e-6 , 1e-6 
+a, b = 1e-2, 1e-3
+c, d = 1e-6 , 1e-6 
+g, h = 1e-6, 1e-6 
 
 
 R_effective = []
@@ -51,7 +40,7 @@ nll_values = []
 start_time = time.time()
 for i in range(1):
     # Split the data
-    np.random.seed(2)
+    np.random.seed(3)
     indices = np.random.permutation(len(X))
     split_index = int(0.90 * len(X))  # 90% for training, 10% for testing
     X_train, X_test = X[indices[:split_index]], X[indices[split_index:]]
@@ -133,10 +122,10 @@ plt.tight_layout()
 plt.show()
 
 
-# print(f"Total runtime for 10 runs: {total_runtime_seconds:.2f} seconds")
-# print(
-#     f"Mean RMSE: {np.mean(rmse_values)}, Standard Deviation of RMSE: {np.std(rmse_values)}"
-# )
+print(f"Total runtime for 10 runs: {total_runtime_seconds:.2f} seconds")
+print(
+    f"Mean RMSE: {np.mean(rmse_values)}, Standard Deviation of RMSE: {np.std(rmse_values)}"
+)
 
 # REPORTED
 # input_dimension = 10
