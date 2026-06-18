@@ -27,9 +27,9 @@ y = df[:, 6].reshape(-1, 1)  # target
 input_dimension = 20
 max_rank = 5
 
-a, b = 1e-2, 1e-3
-c, d = 1e-6 , 1e-6 
-g, h = 1e-6, 1e-6 
+a, b = 1e-1, 1e-3
+c, d = 1e-6 , 1e-6
+g, h = 1e-6, 1e-6
 
 
 R_effective = []
@@ -69,7 +69,7 @@ for i in range(1):
         scale_parameter_lambda=d,
         shape_parameter_delta=g,
         scale_parameter_delta=h,
-        max_iter=10,
+        max_iter=50,
         precision_update=True,
         lambda_update=True,
         delta_update=True,

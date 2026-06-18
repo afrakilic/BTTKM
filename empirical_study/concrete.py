@@ -7,7 +7,8 @@ import os, sys
 
 sys.path.append(os.getcwd())
 from config import *  # Import everything from config.py
-from functions.BTN_KM import btnkm
+from BTTKM import bttkm
+
 
 # Load the dataset
 df = pd.read_csv("data/concrete.csv", header=None)
@@ -18,27 +19,27 @@ df = df.values
 df = df.astype(float)
 
 X = df[:, :8]  # features
-y = df[:, 8]  # target
+y = df[:, 8].reshape(-1, 1)   # target
 
 
 # Define hyperparameters
 input_dimension = 20
-max_rank = 25
+max_rank = 5
 
-a, b = 1e-3, 1e-3
-c, d = 1e-5 * np.ones(max_rank), 1e-6 * np.ones(max_rank)
-g, h = 1e-6 * np.ones(input_dimension), 1e-6 * np.ones(input_dimension)
-
+a, b = 1e-2, 1e-3
+c, d = 1e-6 , 1e-6 
+g, h = 1e-6, 1e-6 
 
 R_effective = []
 rmse_values = []
 nll_values = []
 
 # Loop 10 times to run the training and evaluation
+# Loop 10 times to run the training and evaluation
 start_time = time.time()
-for i in range(10):
+for i in range(1):
     # Split the data
-    np.random.seed(i)
+    np.random.seed(3)
     indices = np.random.permutation(len(X))
     split_index = int(0.90 * len(X))  # 90% for training, 10% for testing
     X_train, X_test = X[indices[:split_index]], X[indices[split_index:]]
@@ -55,8 +56,8 @@ for i in range(10):
     y_train = (y_train - y_mean) / y_std
 
     # train the model
-    model = btnkm(X_train.shape[1])
-    R, _, _, _, _, _, _ = model.train(
+    model =bttkm(X_train.shape[1])
+    W_D = model.train(
         features=X_train,
         target=y_train,
         input_dimension=input_dimension,
@@ -72,45 +73,58 @@ for i in range(10):
         lambda_update=True,
         delta_update=True,
         plot_results=False,
-        prune_rank=True,
+        prune_rank=False,
     )
 
     # Predict (mse is returned by the predict function)
-    prediction_mean, prediction_std, _ = model.predict(
-        features=X_test, input_dimension=input_dimension
+    prediction_mean = model.predict(
+        features=X_test, input_dimension=input_dimension, rank = max_rank
     )
 
     prediction_mean_unscaled = prediction_mean * y_std + y_mean
-    prediction_std_unscaled = prediction_std * y_std
-
-    # nll
-    nll = 0.5 * np.log(2 * np.pi * prediction_std_unscaled**2) + 0.5 * (
-        (y_test - prediction_mean_unscaled) ** 2
-    ) / (prediction_std_unscaled**2)
-    nll_values.append(np.mean(nll))
+    # prediction_std_unscaled = prediction_std * y_std
 
     # rmse
     rmse = np.sqrt(np.mean((prediction_mean_unscaled - y_test) ** 2))
     rmse_values.append(rmse)
 
-    R_effective.append(R)
+    # rmse = np.sqrt(np.mean((y_test - prediction_mean) ** 2))
+    print(f"RMSE: {rmse:.4f}")
 
 
 end_time = time.time()
 
 total_runtime_seconds = end_time - start_time
-effective_r = np.mean(R_effective)
-effective_r_std = np.std(R_effective)
+
+plt.figure(figsize=(10, 5))
+
+# Plot 1: Predicted vs True (scatter)
+plt.subplot(1, 2, 1)
+plt.scatter(y_test, prediction_mean_unscaled, alpha=0.6, edgecolors='k', linewidths=0.5)
+plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', label='Perfect fit')
+plt.xlabel("True Values")
+plt.ylabel("Predicted Values")
+plt.title(f"Predicted vs True (RMSE: {rmse:.4f})")
+plt.legend()
+
+# Plot 2: Predictions vs True over sample index
+plt.subplot(1, 2, 2)
+sort_idx = np.argsort(y_test.flatten())
+plt.plot(y_test.flatten()[sort_idx], label="True", linewidth=1.5)
+plt.plot(prediction_mean_unscaled.flatten()[sort_idx], label="Predicted", linewidth=1.5, linestyle='--')
+plt.xlabel("Sample Index (sorted by true value)")
+plt.ylabel("Target Value")
+plt.title("Predictions vs True Values")
+plt.legend()
+
+plt.tight_layout()
+plt.show()
+
 
 print(f"Total runtime for 10 runs: {total_runtime_seconds:.2f} seconds")
 print(
     f"Mean RMSE: {np.mean(rmse_values)}, Standard Deviation of RMSE: {np.std(rmse_values)}"
 )
-print(
-    f"Mean NLL : {np.mean(nll_values)}, Standard Deviation of NLL: {np.std(nll_values)}"
-)
-print(f"Effective R: {effective_r}, std: {effective_r_std}")
-
 # REPORTED
 # input_dimension = 20
 # max_rank = 50

@@ -99,21 +99,8 @@ class bttkm:
                 W_D[d] = (tau * Sigma[d] @ Gd.T @ Y).reshape(W_D[d].shape, order="F")
 
 
-                #delta updates 
-                if delta_update:
-                    Kdel = np.kron(lambdas[d+1] * np.eye(lambdas[d+1].size), lambdas[d] * np.eye(lambdas[d].size))
-
-                    Sigma_cored = np.diag(Sigma[d]).reshape(W_D[d].shape, order="F")
-                    Sigma2 = tt_core_unfolding(Sigma_cored, mode=2)[0]
-                    W2 = tt_core_unfolding(W_D[d], mode=2)[0]
-                    ewdel2 = np.diag(W2 @ Kdel @ W2.T) + Sigma2 @ np.kron(lambdas[d+1], lambdas[d])
-                    gNs[d] = g0s[d] + 0.5 * (lambdas[d].size * lambdas[d+1].size )
-                    hNs[d] = h0s[d] + 0.5 * ewdel2
-                    deltas[d] = gNs[d] / hNs[d]
-
-
-                # #lambda updates 
-                if lambda_update: 
+                 # #lambda updates 
+                if it > 5 and lambda_update: 
                     if d>0:
                         Klam1= np.kron(lambdas[d+1]*np.eye(lambdas[d+1].size),deltas[d]*np.eye(deltas[d].size))
                         Klam2= np.kron(deltas[d-1]*np.eye(deltas[d-1].size), lambdas[d-1]*np.eye(lambdas[d-1].size))
@@ -129,12 +116,32 @@ class bttkm:
                         cNs[d] = c0s[d] + 0.5 * (deltas[d-1].size * lambdas[d-1].size + lambdas[d+1].size * deltas[d].size) 
 
                         lambdas[d] = cNs[d] /dNs[d]
-            
+
+                #delta updates 
+                if it > 5 and delta_update:
+                    Kdel = np.kron(lambdas[d+1] * np.eye(lambdas[d+1].size), lambdas[d] * np.eye(lambdas[d].size))
+
+                    Sigma_cored = np.diag(Sigma[d]).reshape(W_D[d].shape, order="F")
+                    Sigma2 = tt_core_unfolding(Sigma_cored, mode=2)[0]
+                    W2 = tt_core_unfolding(W_D[d], mode=2)[0]
+                    ewdel2 = np.diag(W2 @ Kdel @ W2.T) + Sigma2 @ np.kron(lambdas[d+1], lambdas[d])
+                    gNs[d] = g0s[d] + 0.5 * (lambdas[d].size * lambdas[d+1].size )
+                    hNs[d] = h0s[d] + 0.5 * ewdel2
+                    deltas[d] = gNs[d] / hNs[d]
+
+
+               
+
 
             y_hat = compute_G_left(Phi, W_D, N)
             err = np.dot((Y - y_hat).T, (Y - y_hat))
 
-            if precision_update:
+            def slab_norms(W_d):
+                R_d, M_d, R_next = W_d.shape
+                return np.array([np.linalg.norm(W_d[:, m, :]) for m in range(M_d)])
+
+            
+            if  it > 5 and precision_update:
                 a_N = a0 + (N / 2)
                 YY = Y.T @ Y 
                 YG = -2 * np.dot(Y.T, y_hat)
@@ -153,7 +160,10 @@ class bttkm:
             
             pbar.set_postfix(Fit=f"{float(Fit):.4f}")
 
-     
+        for d in range(D):
+                norms = slab_norms(W_D[d])
+                rho, p = spearmanr(deltas[d], norms)  
+                print(f"core {d}: spearman(delta, ||slab||) = {rho:.3f} (p={p:.3f})")
         self.W_D = W_D
         self.V = Sigma
         self.a = a_N
