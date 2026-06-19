@@ -27,7 +27,7 @@ y = df[:, 6].reshape(-1, 1)  # target
 input_dimension = 20
 max_rank = 5
 
-a, b = 1e-1, 1e-3
+a, b = 1e-2, 1e-3
 c, d = 1e-6 , 1e-6
 g, h = 1e-6, 1e-6
 
@@ -40,7 +40,7 @@ nll_values = []
 start_time = time.time()
 for i in range(1):
     # Split the data
-    np.random.seed(1)
+    np.random.seed(3)
     indices = np.random.permutation(len(X))
     split_index = int(0.90 * len(X))  # 90% for training, 10% for testing
     X_train, X_test = X[indices[:split_index]], X[indices[split_index:]]

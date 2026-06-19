@@ -30,9 +30,7 @@ g, h = 1e-6, 1e-6
 
 R_effective = []
 rmse_values = []
-nll_values = []
 
-# Loop 10 times to run the training and evaluation
 # Loop 10 times to run the training and evaluation
 start_time = time.time()
 for i in range(1):

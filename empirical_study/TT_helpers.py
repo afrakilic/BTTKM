@@ -289,3 +289,5 @@ def compute_H_right(Phis, Ws, Sigmas, N, H0=None):
         H = khatri_rao_rows(Phi2, H) @ Ew_kronW_right(Wm_r[k], Sg_r[k], R=R, M=M, Rn=Rn)
 
     return H
+
+
