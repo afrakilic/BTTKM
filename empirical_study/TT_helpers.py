@@ -32,52 +32,6 @@ def khatri_rao_rows(A, B):
     return (A[:, :, None] * B[:, None, :]).reshape(A.shape[0], -1)
 
 
-def compute_G_left(Phis, Ws, N):
-    """
-    If Phis/Ws are empty, return G = ones((N,1)).
-    Otherwise compute left-to-right contractions.
-    """
-    if (Phis is None or len(Phis) == 0) or (Ws is None or len(Ws) == 0):
-        return np.ones((N, 1))
-
-    Ws_mat = tt_core_unfolding(Ws, mode=3)
-
-    # Use N if provided; otherwise infer from Phis
-    N_ = N if N is not None else Phis[0].shape[0]
-    G = np.ones((N_, 1))
-
-    for k in range(len(Phis)):
-        G = khatri_rao_rows(Phis[k], G) @ Ws_mat[k].T
-
-    return G
-
-
-def compute_G_right(Phis, Ws, N):
-    """
-    If Phis/Ws are empty, return G = ones((N,1)).
-    Otherwise compute right-to-left contractions.
-    """
-    if (Phis is None or len(Phis) == 0) or (Ws is None or len(Ws) == 0):
-        return np.ones((N, 1))
-
-    D = len(Phis)
-
-    # Use N if provided; otherwise infer from Phis
-    N_ = N if N is not None else Phis[0].shape[0]
-
-    Ws_mat = tt_core_unfolding(Ws, mode=1)
-    Phis_r = Phis[::-1]
-    Ws_r   = Ws_mat[::-1]
-
-    G = np.ones((N_, 1))  # corresponds to G_>D
-
-    for k in range(D):
-        G = khatri_rao_rows( G, Phis_r[k]) @ Ws_r[k].T
-
-    return G
-
-
-
 def tt_core_unfolding(T_list, mode):
     """
     Apply mode-n unfolding to a list of 3-way tensors T[r,m,n].
@@ -181,52 +135,6 @@ def Ew_kronW_right(W, Sigma, R, M, Rn):
     return result
 
 
-def compute_H_left(Phis, Ws, Sigmas, N):
-    """
-    If Phis/Ws/Sigmas are empty, return H = ones((N,1)).
-    Otherwise compute left-to-right contractions.
-    """
-    if (Phis is None or len(Phis) == 0) or (Ws is None or len(Ws) == 0) or (Sigmas is None or len(Sigmas) == 0):
-        return np.ones((N, 1))
-
-    N_ = N if N is not None else Phis[0].shape[0]
-    H = np.ones((N_, 1))  # H_<1 (since R1=1)
-
-    Ws_mat = tt_core_unfolding(Ws, mode=3)
-
-    for k in range(len(Phis)):
-        Phi2 = khatri_rao_rows(Phis[k], Phis[k])
-        R, M, Rn = Ws[k].shape
-        H = khatri_rao_rows(Phi2, H) @ Ew_kronW_left(Ws_mat[k], Sigmas[k], R = R, M=M, Rn = Rn)
-
-    return H
-
-
-def compute_H_right(Phis, Ws, Sigmas, N):
-    """
-    If Phis/Ws/Sigmas are empty, return H = ones((N,1)).
-    Otherwise compute right-to-left contractions.
-    """
-    if (Phis is None or len(Phis) == 0) or (Ws is None or len(Ws) == 0) or (Sigmas is None or len(Sigmas) == 0):
-        return np.ones((N, 1))
-
-    N_ = N if N is not None else Phis[0].shape[0]
-    H = np.ones((N_, 1))  # H_>D (since R_{D+1}=1)
-
-    Ws_mat = tt_core_unfolding(Ws, mode=1)
-    Ws_r = Ws[::-1]
-    Ph_r = Phis[::-1]
-    Wm_r = Ws_mat[::-1]
-    Sg_r = Sigmas[::-1]
-
-    for k in range(len(Ph_r)):
-        Phi2 = khatri_rao_rows(Ph_r[k], Ph_r[k])
-        R, M, Rn = Ws_r[k].shape
-        H = khatri_rao_rows(Phi2, H) @ Ew_kronW_right(Wm_r[k], Sg_r[k], R = R, M=M, Rn = Rn)
-
-
-    return H
-
 
 
 def init_sigmas(D, R=4, M=8, Rs=None, Ms=None):
@@ -260,7 +168,7 @@ def init_sigmas(D, R=4, M=8, Rs=None, Ms=None):
     Sigmas = []
     for d in range(D):
         n_d = Rs[d] * Ms[d] * Rs[d + 1]
-        Sigmas.append(0.1* np.eye(n_d))
+        Sigmas.append(1e-4* np.eye(n_d))
 
     return Sigmas
 
@@ -311,8 +219,73 @@ def pure_power_features_TT(X, M=8, Ms=None, eps=1e-12):
         powers = np.arange(Ms[d])
         Phi = X[:, d:d+1] ** powers[None, :]
         Phi /= np.linalg.norm(Phi, axis=1, keepdims=True) + eps
-        Phi = Phi 
+        Phi = Phi  +0.2
         Phis.append(Phi)
 
     return Phis
 
+def compute_G_left(Phis, Ws, N, G0=None):
+    if (Phis is None or len(Phis) == 0) or (Ws is None or len(Ws) == 0):
+        return G0 if G0 is not None else np.ones((N, 1))
+
+    Ws_mat = tt_core_unfolding(Ws, mode=3)
+    N_ = N if N is not None else Phis[0].shape[0]
+    G = G0 if G0 is not None else np.ones((N_, 1))
+
+    for k in range(len(Phis)):
+        G = khatri_rao_rows(Phis[k], G) @ Ws_mat[k].T
+
+    return G
+
+
+def compute_G_right(Phis, Ws, N, G0=None):
+    if (Phis is None or len(Phis) == 0) or (Ws is None or len(Ws) == 0):
+        return G0 if G0 is not None else np.ones((N, 1))
+
+    D = len(Phis)
+    N_ = N if N is not None else Phis[0].shape[0]
+    Ws_mat = tt_core_unfolding(Ws, mode=1)
+    Phis_r = Phis[::-1]
+    Ws_r   = Ws_mat[::-1]
+    G = G0 if G0 is not None else np.ones((N_, 1))
+
+    for k in range(D):
+        G = khatri_rao_rows(G, Phis_r[k]) @ Ws_r[k].T
+
+    return G
+
+
+def compute_H_left(Phis, Ws, Sigmas, N, H0=None):
+    if (Phis is None or len(Phis) == 0) or (Ws is None or len(Ws) == 0) or (Sigmas is None or len(Sigmas) == 0):
+        return H0 if H0 is not None else np.ones((N, 1))
+
+    N_ = N if N is not None else Phis[0].shape[0]
+    H = H0 if H0 is not None else np.ones((N_, 1))
+    Ws_mat = tt_core_unfolding(Ws, mode=3)
+
+    for k in range(len(Phis)):
+        Phi2 = khatri_rao_rows(Phis[k], Phis[k])
+        R, M, Rn = Ws[k].shape
+        H = khatri_rao_rows(Phi2, H) @ Ew_kronW_left(Ws_mat[k], Sigmas[k], R=R, M=M, Rn=Rn)
+
+    return H
+
+
+def compute_H_right(Phis, Ws, Sigmas, N, H0=None):
+    if (Phis is None or len(Phis) == 0) or (Ws is None or len(Ws) == 0) or (Sigmas is None or len(Sigmas) == 0):
+        return H0 if H0 is not None else np.ones((N, 1))
+
+    N_ = N if N is not None else Phis[0].shape[0]
+    H = H0 if H0 is not None else np.ones((N_, 1))
+    Ws_mat = tt_core_unfolding(Ws, mode=1)
+    Ws_r = Ws[::-1]
+    Ph_r = Phis[::-1]
+    Wm_r = Ws_mat[::-1]
+    Sg_r = Sigmas[::-1]
+
+    for k in range(len(Ph_r)):
+        Phi2 = khatri_rao_rows(Ph_r[k], Ph_r[k])
+        R, M, Rn = Ws_r[k].shape
+        H = khatri_rao_rows(Phi2, H) @ Ew_kronW_right(Wm_r[k], Sg_r[k], R=R, M=M, Rn=Rn)
+
+    return H

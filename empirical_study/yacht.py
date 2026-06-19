@@ -40,7 +40,7 @@ nll_values = []
 start_time = time.time()
 for i in range(1):
     # Split the data
-    np.random.seed(3)
+    np.random.seed(1)
     indices = np.random.permutation(len(X))
     split_index = int(0.90 * len(X))  # 90% for training, 10% for testing
     X_train, X_test = X[indices[:split_index]], X[indices[split_index:]]
@@ -78,7 +78,7 @@ for i in range(1):
     )
 
     # Predict (mse is returned by the predict function)
-    prediction_mean = model.predict(
+    prediction_mean, mse = model.predict(
         features=X_test, input_dimension=input_dimension, rank = max_rank
     )
 

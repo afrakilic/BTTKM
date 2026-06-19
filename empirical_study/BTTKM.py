@@ -76,27 +76,42 @@ class bttkm:
         lambdas0 = [c / d for c, d in zip(c0s, d0s)]; lambdas = [l.copy() for l in lambdas0]
 
 
+       
         W_D = generate_tt_cores(D=D, Ms=Ms, Rs=Rs, seed=1)
-        Phi = pure_power_features_TT(X,Ms=Ms) 
+        Phi = pure_power_features_TT(X, Ms=Ms)
         Sigma = init_sigmas(D=D, Ms=Ms, Rs=Rs)
         pbar = trange(max_iter, desc="Running", leave=True)
-        for it in pbar:
-            for d in range(D):
 
-                #tensor core update 
-                G_left = compute_G_left(Phi[:d], W_D[:d], N)
-                G_right = compute_G_right(Phi[d+1:], W_D[d+1:], N) 
+        for it in pbar:
+
+            GR_env = [None] * (D + 1)
+            HR_env = [None] * (D + 1)
+            GR_env[D] = np.ones((N, 1))
+            HR_env[D] = np.ones((N, 1))
+            for k in range(D - 1, -1, -1):
+                GR_env[k] = compute_G_right([Phi[k]], [W_D[k]], N, G0=GR_env[k + 1])
+                HR_env[k] = compute_H_right([Phi[k]], [W_D[k]], [Sigma[k]], N, H0=HR_env[k + 1])
+
+            GL_env = np.ones((N, 1))
+            HL_env = np.ones((N, 1))
+
+            for d in range(D):
+                G_left = GL_env
+                G_right = GR_env[d + 1]
                 Gd = khatri_rao_rows(khatri_rao_rows(G_right, Phi[d]), G_left)
-                H_left = compute_H_left(Phi[:d], W_D[:d], Sigma[:d], N)
-                H_right = compute_H_right(Phi[d+1:], W_D[d+1:], Sigma[d+1:],N)
-                ggT = reshape_permute_ggT_to_sigma(khatri_rao_rows(H_left, Phi[d]).T @ khatri_rao_rows( H_right, Phi[d]), 
+
+                H_left = HL_env
+                H_right = HR_env[d + 1]
+                ggT = reshape_permute_ggT_to_sigma(khatri_rao_rows(H_left, Phi[d]).T @ khatri_rao_rows(H_right, Phi[d]),
                                                 R_d=W_D[d].shape[0],
                                                 M_d=W_D[d].shape[1],
                                                 R_next=W_D[d].shape[2])
-                # ggT = Gd.T@Gd
-                
+
                 Sigma[d] = np.linalg.pinv(tau * ggT + np.kron(np.kron(lambdas[d+1]* np.eye(Rs[d+1]), deltas[d]*np.eye(Ms[d])), lambdas[d]*np.eye(Rs[d])))
                 W_D[d] = (tau * Sigma[d] @ Gd.T @ Y).reshape(W_D[d].shape, order="F")
+
+                GL_env = compute_G_left([Phi[d]], [W_D[d]], N, G0=GL_env)
+                HL_env = compute_H_left([Phi[d]], [W_D[d]], [Sigma[d]], N, H0=HL_env)
 
 
                  # #lambda updates 
@@ -129,24 +144,21 @@ class bttkm:
                     hNs[d] = h0s[d] + 0.5 * ewdel2
                     deltas[d] = gNs[d] / hNs[d]
 
-
-               
-
-
-            y_hat = compute_G_left(Phi, W_D, N)
+            y_hat = GL_env
             err = np.dot((Y - y_hat).T, (Y - y_hat))
 
             def slab_norms(W_d):
                 R_d, M_d, R_next = W_d.shape
                 return np.array([np.linalg.norm(W_d[:, m, :]) for m in range(M_d)])
-
             
-            if  it > 5 and precision_update:
+            
+
+            if it > 5 and precision_update:
                 a_N = a0 + (N / 2)
-                YY = Y.T @ Y 
+                YY = Y.T @ Y
                 YG = -2 * np.dot(Y.T, y_hat)
-                GG = np.sum(compute_H_right(Phi, W_D, Sigma, N), axis=0)
-                b_N = b0 + (0.5 * (YY+YG+GG))
+                GG = np.sum(HL_env, axis=0)
+                b_N = b0 + (0.5 * (YY + YG + GG))
             else:
                 a_N = a0
                 b_N = b0
@@ -154,9 +166,16 @@ class bttkm:
             tau = a_N / b_N
 
             #fit metric 
-            tss = np.sum((Y.reshape(-1,1) - np.mean(Y))**2)
-            rss = np.sum((Y.reshape(-1,1) - y_hat)**2)
-            Fit = 1 - (rss / tss)  # R-squared
+
+             # FIT METRIC
+            if classification:
+                Fit = accuracy_score(Y, np.sign(y_hat))
+            else:
+                tss = np.sum((Y.reshape(-1,1) - np.mean(Y))**2)
+                rss = np.sum((Y.reshape(-1,1) - y_hat)**2)
+                Fit = 1 - (rss / tss)  # R-squared
+
+            
             
             pbar.set_postfix(Fit=f"{float(Fit):.4f}")
 
@@ -211,7 +230,19 @@ class bttkm:
             Rs = [1] + [R] * (D - 1) + [1] 
             # Feature map
             Phi = pure_power_features_TT(X,Ms=Ms) 
-            y_hat = compute_G_left(Phi, self.W_D, N)
+            predictions = compute_G_left(Phi, self.W_D, N)
 
-            return y_hat
+            if true_values is not None:
+                if classification:
+                    accuracy = accuracy_score(true_values, np.sign(predictions))
+                    mse = 1 - accuracy
+                    print(f"Missclassification rate = {mse}")
+                else:
+                    # Standardized MSE
+                    mse = np.mean((true_values - predictions) ** 2)
+                    print(f"MSE = {mse}")
+            else:
+                mse = None
+
+            return predictions, mse
 

@@ -77,7 +77,7 @@ for i in range(1):
     )
 
     # Predict (mse is returned by the predict function)
-    prediction_mean = model.predict(
+    prediction_mean, mse= model.predict(
         features=X_test, input_dimension=input_dimension, rank = max_rank
     )
 
