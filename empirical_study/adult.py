@@ -7,7 +7,7 @@ import os, sys
 
 sys.path.append(os.getcwd())
 from config import *  # Import everything from config.py
-from BTTKM import bttkm
+from functions.BTTKM import bttkm
 
 # Load the dataset
 df = pd.read_csv(

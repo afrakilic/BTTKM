@@ -137,7 +137,7 @@ def Ew_kronW_right(W, Sigma, R, M, Rn):
 
 
 
-def init_sigmas(D, R=4, M=8, Rs=None, Ms=None):
+def init_sigmas(D, R=4, M=8, Rs=None, Ms=None, N =  None):
     """
     Generate Sigma_d covariance matrices for vec(TT cores),
     matching the interface of generate_tt_cores.
@@ -168,7 +168,7 @@ def init_sigmas(D, R=4, M=8, Rs=None, Ms=None):
     Sigmas = []
     for d in range(D):
         n_d = Rs[d] * Ms[d] * Rs[d + 1]
-        Sigmas.append(1e-4* np.eye(n_d))
+        Sigmas.append(1e-2*M/(N*R) * np.eye(n_d))
 
     return Sigmas
 
@@ -219,7 +219,7 @@ def pure_power_features_TT(X, M=8, Ms=None, eps=1e-12):
         powers = np.arange(Ms[d])
         Phi = X[:, d:d+1] ** powers[None, :]
         Phi /= np.linalg.norm(Phi, axis=1, keepdims=True) + eps
-        Phi = Phi  +0.2
+        Phi = Phi +0.2
         Phis.append(Phi)
 
     return Phis
@@ -291,3 +291,75 @@ def compute_H_right(Phis, Ws, Sigmas, N, H0=None):
     return H
 
 
+
+def legendre_basis(x: np.ndarray, I: int, normalize: bool = True) -> list:
+    """
+    Compute Legendre polynomial basis functions using the three-term recurrence.
+    
+    Parameters
+    ----------
+    x : np.ndarray, shape (N, D)
+        Input points, expected in [-1, 1].
+    I : int
+        Number of basis functions (polynomial orders).
+    normalize : bool
+        If True (default), scales columns so that Phi.T @ Phi ≈ I on the
+        training data of size N. Set to False when applying a pre-trained
+        model to test data (unscaled P is combined with S_L-absorbed weights).
+    
+    Returns
+    -------
+    P_list : list of D arrays, each shape (N, I)
+    """
+    N, D = x.shape
+    P = np.zeros((N, I, D))
+
+    if normalize:
+        # --- original scaled recurrence (trains with Phi.T @ Phi ≈ I) ---
+        P[:, 0, :] = np.sqrt(1 / (N - 1))
+        if I > 1:
+            P[:, 1, :] = x * np.sqrt(3 / (N - 1))
+        for c in range(3, I + 1):
+            i = c - 1
+            c1 = np.sqrt((2*c - 3) * (N - 1)) / (c - 1)
+            c2 = (c - 2) * np.sqrt((N - 1) / (2*c - 5)) / (c - 1)
+            P[:, i, :] = (c1 * x * P[:, i-1, :] - c2 * P[:, i-2, :]) * np.sqrt((2*c - 1) / (N - 1))
+
+    else:
+        # --- raw (unscaled) Legendre polynomials P_0, P_1, P_2, ... ---
+        # No N dependence; S_L has been absorbed into W_tilde instead.
+        P[:, 0, :] = 1.0
+        if I > 1:
+            P[:, 1, :] = x
+        for c in range(3, I + 1):
+            i = c - 1
+            # Standard three-term recurrence for Legendre polynomials
+            P[:, i, :] = ((2*c - 3) * x * P[:, i-1, :] - (c - 2) * P[:, i-2, :]) / (c - 1)
+
+    return [P[:, :, d] for d in range(D)]
+
+
+
+
+def initialize_tt_cores(N=10, D=4, I=8, R=10, epsilon=1e-5):
+    factor = N / (I * R)
+    base = np.zeros(I)
+    base[0] = np.sqrt(N - 1)
+
+    W = [None] * D
+
+    # First and last cores: shape (I, R)
+    W[0]   = base[:, None] * np.ones((I, R)) + np.sqrt(epsilon * factor) * np.random.randn(I, R)
+    W[D-1] = base[:, None] * np.ones((I, R)) + np.sqrt(epsilon * factor) * np.random.randn(I, R)
+
+    # Middle cores: shape (I, R^2)
+    base_mid = np.zeros(I)
+    base_mid[0] = np.sqrt(N - 1) / R
+    for d in range(1, D - 1):
+        W[d] = base_mid[:, None] * np.ones((I, R**2)) + np.sqrt(epsilon * factor) * np.random.randn(I, R**2)
+
+    W[0]  = np.transpose(W[0].reshape(I, 1, R, order="F"), (1, 0, 2))   # (1, I, R)
+    W[-1] = np.transpose(W[-1].reshape(I, R, 1, order="F"), (1, 0, 2))  # (R, I, 1)
+    for d in range(1, len(W) - 1):
+        W[d] = np.transpose(W[d].reshape(I, R, R, order="F"), (1, 0, 2))  # (R, I, R)
+    return W

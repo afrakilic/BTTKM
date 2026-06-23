@@ -7,7 +7,7 @@ import os, sys
 
 sys.path.append(os.getcwd())
 from config import *  # Import everything from config.py
-from BTTKM import bttkm
+from functions.BTTKM import bttkm
 
 df = pd.read_csv("data/spambase.csv", header=None)
 df.columns = df.iloc[0]

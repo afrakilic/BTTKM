@@ -7,7 +7,7 @@ import os, sys
 
 sys.path.append(os.getcwd())
 from config import *  # Import everything from config.py
-from BTTKM import bttkm
+from functions.BTTKM import bttkm
 
 
 df = pd.read_csv("data/airfoil.csv", header=None)
@@ -30,6 +30,7 @@ g, h = 1e-6, 1e-6
 
 R_effective = []
 rmse_values = []
+nll_values = []
 
 # Loop 10 times to run the training and evaluation
 start_time = time.time()
@@ -46,6 +47,13 @@ for i in range(1):
     X_std[X_std == 0] = 1
     X_train = (X_train - X_mean) / X_std
     X_test = (X_test - X_mean) / X_std  # Use train stats
+
+    # X_min = X_train.min(axis=0)
+    # X_max = X_train.max(axis=0)
+    # X_range = X_max - X_min
+    # X_range[X_range == 0] = 1
+    # X_train = 2 * (X_train - X_min) / X_range - 1
+    # X_test  = 2 * (X_test  - X_min) / X_range - 1
 
     y_mean = y_train.mean()
     y_std = y_train.std()
@@ -65,20 +73,20 @@ for i in range(1):
         shape_parameter_delta=g,
         scale_parameter_delta=h,
         max_iter=50,
-        precision_update=True,
-        lambda_update=True,
-        delta_update=True,
+        precision_update=False,
+        lambda_update=False,
+        delta_update=False,
         plot_results=False,
         prune_rank=False,
     )
 
-    # Predict (mse is returned by the predict function)
-    prediction_mean, mse = model.predict(
+  # Predict (mse is returned by the predict function)
+    prediction_mean,prediction_std, mse = model.predict(
         features=X_test, input_dimension=input_dimension, rank = max_rank
     )
 
     prediction_mean_unscaled = prediction_mean * y_std + y_mean
-    # prediction_std_unscaled = prediction_std * y_std
+    prediction_std_unscaled = prediction_std * y_std
 
     # rmse
     rmse = np.sqrt(np.mean((prediction_mean_unscaled - y_test) ** 2))
@@ -86,42 +94,40 @@ for i in range(1):
 
     # rmse = np.sqrt(np.mean((y_test - prediction_mean) ** 2))
     print(f"RMSE: {rmse:.4f}")
+     # nll
+    nll = 0.5 * np.log(2 * np.pi * prediction_std_unscaled**2) + 0.5 * (
+        (y_test.flatten() - prediction_mean_unscaled.flatten()) ** 2
+    ) / (prediction_std_unscaled**2)
+    
+    nll_values.append(np.mean(nll))
+    print(nll_values)
+
 
 
 end_time = time.time()
 
 total_runtime_seconds = end_time - start_time
 
-plt.figure(figsize=(10, 5))
-
-# Plot 1: Predicted vs True (scatter)
-plt.subplot(1, 2, 1)
-plt.scatter(y_test, prediction_mean_unscaled, alpha=0.6, edgecolors='k', linewidths=0.5)
-plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', label='Perfect fit')
-plt.xlabel("True Values")
-plt.ylabel("Predicted Values")
-plt.title(f"Predicted vs True (RMSE: {rmse:.4f})")
-plt.legend()
-
-# Plot 2: Predictions vs True over sample index
-plt.subplot(1, 2, 2)
 sort_idx = np.argsort(y_test.flatten())
-plt.plot(y_test.flatten()[sort_idx], label="True", linewidth=1.5)
-plt.plot(prediction_mean_unscaled.flatten()[sort_idx], label="Predicted", linewidth=1.5, linestyle='--')
+y_sorted    = y_test.flatten()[sort_idx]
+mean_sorted = prediction_mean_unscaled.flatten()[sort_idx]
+std_sorted  = prediction_std_unscaled.flatten()[sort_idx]
+
+plt.figure(figsize=(10, 5))
+plt.plot(y_sorted, label="True", linewidth=1.5, color='black')
+plt.plot(mean_sorted, label="Predicted", linewidth=1.5, linestyle='--', color='blue')
+plt.fill_between(
+    np.arange(len(mean_sorted)),
+    mean_sorted - 2 * std_sorted,
+    mean_sorted + 2 * std_sorted,
+    alpha=0.3, color='blue', label='95% CI (±2σ)'
+)
 plt.xlabel("Sample Index (sorted by true value)")
 plt.ylabel("Target Value")
-plt.title("Predictions vs True Values")
+plt.title("Predictions with Uncertainty Bounds")
 plt.legend()
-
 plt.tight_layout()
 plt.show()
-
-
-print(f"Total runtime for 10 runs: {total_runtime_seconds:.2f} seconds")
-print(
-    f"Mean RMSE: {np.mean(rmse_values)}, Standard Deviation of RMSE: {np.std(rmse_values)}"
-)
-
 # REPORTED
 # input_dimension = 20
 # # max_rank = 50
