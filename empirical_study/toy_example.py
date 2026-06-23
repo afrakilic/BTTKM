@@ -54,11 +54,11 @@ for i in range(1):
         lambda_update=True,
         delta_update=True,
         plot_results=False,
-        prune_rank=False,
+        prune_rank=True,
     )
 
     # Predict (mse is returned by the predict function)
-    prediction_mean, mse = model.predict(
+    prediction_mean, prediction_std, mse = model.predict(
         features=X, input_dimension=I_init, rank = R_init
     )
 

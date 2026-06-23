@@ -24,7 +24,7 @@ y = df[:, 5].reshape(-1, 1)
 input_dimension = 20
 max_rank = 5
 
-a, b = 1e-2, 1e-3
+a, b = 1, 1e-3
 c, d = 1e-6 , 1e-6 
 g, h = 1e-6, 1e-6 
 
@@ -72,12 +72,12 @@ for i in range(1):
         scale_parameter_lambda=d,
         shape_parameter_delta=g,
         scale_parameter_delta=h,
-        max_iter=50,
-        precision_update=False,
-        lambda_update=False,
-        delta_update=False,
+        max_iter=100,
+        precision_update=True,
+        lambda_update=True,
+        delta_update=True,
         plot_results=False,
-        prune_rank=False,
+        prune_rank=True,
     )
 
   # Predict (mse is returned by the predict function)

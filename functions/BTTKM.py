@@ -90,26 +90,14 @@ class bttkm:
 
         for it in pbar:
 
-            GR_env = [None] * (D + 1)
-            HR_env = [None] * (D + 1)
-            GR_env[D] = np.ones((N, 1))
-            HR_env[D] = np.ones((N, 1))
-            
-            for k in range(D - 1, -1, -1):
-                GR_env[k] = compute_G_right([Phi[k]], [W_D[k]], N, G0=GR_env[k + 1])
-                HR_env[k] = compute_H_right([Phi[k]], [W_D[k]], [Sigma[k]], N, H0=HR_env[k + 1])
-            GR_env[0] = np.ones((N, 1))
-            HR_env[0] = np.ones((N, 1))
-            GL_env = np.ones((N, 1))
-            HL_env = np.ones((N, 1))
 
             for d in range(D):
-                G_left = GL_env
-                G_right = GR_env[d + 1]
+                    #tensor core update 
+                G_left = compute_G_left(Phi[:d], W_D[:d], N)
+                G_right = compute_G_right(Phi[d+1:], W_D[d+1:], N) 
                 Gd = khatri_rao_rows(khatri_rao_rows(G_right, Phi[d]), G_left)
-
-                H_left = HL_env
-                H_right = HR_env[d + 1]
+                H_left = compute_H_left(Phi[:d], W_D[:d], Sigma[:d], N)
+                H_right = compute_H_right(Phi[d+1:], W_D[d+1:], Sigma[d+1:],N)
                 ggT = reshape_permute_ggT_to_sigma(khatri_rao_rows(H_left, Phi[d]).T @ khatri_rao_rows(H_right, Phi[d]),
                                                 R_d=W_D[d].shape[0],
                                                 M_d=W_D[d].shape[1],
@@ -119,8 +107,6 @@ class bttkm:
                 # Sigma[d] = np.linalg.pinv(ggT)
                 W_D[d] = (tau * Sigma[d] @ Gd.T @ Y).reshape(W_D[d].shape, order="F")
 
-                GL_env = compute_G_left([Phi[d]], [W_D[d]], N, G0=GL_env)
-                HL_env = compute_H_left([Phi[d]], [W_D[d]], [Sigma[d]], N, H0=HL_env)
 
 
                  # #lambda updates 
@@ -160,7 +146,7 @@ class bttkm:
                     hNs[d] = h0s[d] + 0.5 * ewdel2
                     deltas[d] = gNs[d] / hNs[d]
             
-            y_hat = GL_env
+            y_hat = compute_G_left(Phi, W_D, N)
             err = np.dot((Y - y_hat).T, (Y - y_hat))
 
             def slab_norms(W_d):
@@ -173,7 +159,7 @@ class bttkm:
                 a_N = a0 + (N / 2)
                 YY = Y.T @ Y
                 YG = -2 * np.dot(Y.T, y_hat)
-                GG = np.sum(HL_env, axis=0)
+                GG = np.sum(compute_H_left(Phi, W_D, Sigma, N), axis=0)
                 b_N = b0 + (0.5 * (YY + YG + GG))
             else:
                 a_N = a0
@@ -186,21 +172,54 @@ class bttkm:
             W_D_mode2 = tt_core_unfolding(W_D, mode=2)
             W_D_mode3 = tt_core_unfolding(W_D, mode=3)
 
-            if it > 5 and it % 10 == 0 and prune_rank:
-                for d in range(1, D): 
-                    comPower_delta =np.diag( W_D_mode2[d]@W_D_mode2[d].T)
-                    var_explained = comPower_delta / np.sum(comPower_delta) * 100
-                    dead = var_explained < 1
-                    W_D[d][:, dead, :] = 0 
-                    
+            if it > 0 and it % 5 == 0 and prune_rank:
+                for d in range(1, D):
                     stack = np.hstack((W_D_mode3[d-1], W_D_mode1[d]))
-                    comPower = np.diag(stack@stack.T)
+                    comPower = np.diag(stack @ stack.T)
                     var_explained = comPower / np.sum(comPower) * 100
-                    
-                    dead = var_explained < 1
+                    keep_R = var_explained >= 1
 
-                    W_D[d-1][:, :, dead] = 0  # zero out mode-3 slabs of core d-1
-                    W_D[d][dead, :, :] = 0    # zero out mode-1 slabs of core d
+                    if np.all(keep_R):
+                        continue
+
+                    idx = np.where(keep_R)[0]
+
+                        # snapshot old sizes before any update
+                    R_d_old = Rs[d]      # == len(keep_R) by construction
+                    I_prev  = Ms[d-1]
+                    R_prev  = Rs[d-1]
+                    I_d     = Ms[d]
+                    R_next  = Rs[d+1]
+
+
+                    # --- trim cores ---
+                    W_D[d-1] = W_D[d-1][:, :, keep_R]   # mode-3 of core d-1
+                    W_D[d]   = W_D[d][keep_R, :, :]      # mode-1 of core d
+
+                    # --- update Rs ---
+                    Rs[d] = int(np.sum(keep_R))
+
+                    # --- trim all lambda-related vectors at boundary d ---
+                    # all have current length R_d_old
+                    lambdas[d] = lambdas[d][keep_R]
+                    cNs[d]     = cNs[d][keep_R]
+                    dNs[d]     = dNs[d][keep_R]
+                    c0s[d]     = c0s[d][keep_R]
+                    d0s[d]     = d0s[d][keep_R]
+
+                    # --- trim Sigma[d-1]: R_d is mode-3 (fastest in Fortran vec) ---
+                    flat_dm1 = np.concatenate([
+                        rb * I_prev * R_d_old + ib * R_d_old + idx
+                        for rb in range(R_prev)
+                        for ib in range(I_prev)
+                    ])
+                    Sigma[d-1] = Sigma[d-1][np.ix_(flat_dm1, flat_dm1)]
+
+                    # --- trim Sigma[d]: R_d is mode-1 (slowest in Fortran vec) ---
+                    flat_d = np.concatenate([
+                        np.arange(r * I_d * R_next, (r + 1) * I_d * R_next) for r in idx
+                    ])
+                    Sigma[d] = Sigma[d][np.ix_(flat_d, flat_d)]
 
              # FIT METRIC
             if classification:
