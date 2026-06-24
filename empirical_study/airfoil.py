@@ -34,9 +34,9 @@ nll_values = []
 
 # Loop 10 times to run the training and evaluation
 start_time = time.time()
-for i in range(1):
+for i in range(10):
     # Split the data
-    np.random.seed(3)
+    np.random.seed(i)
     indices = np.random.permutation(len(X))
     split_index = int(0.90 * len(X))  # 90% for training, 10% for testing
     X_train, X_test = X[indices[:split_index]], X[indices[split_index:]]
@@ -47,13 +47,6 @@ for i in range(1):
     X_std[X_std == 0] = 1
     X_train = (X_train - X_mean) / X_std
     X_test = (X_test - X_mean) / X_std  # Use train stats
-
-    # X_min = X_train.min(axis=0)
-    # X_max = X_train.max(axis=0)
-    # X_range = X_max - X_min
-    # X_range[X_range == 0] = 1
-    # X_train = 2 * (X_train - X_min) / X_range - 1
-    # X_test  = 2 * (X_test  - X_min) / X_range - 1
 
     y_mean = y_train.mean()
     y_std = y_train.std()
@@ -77,7 +70,7 @@ for i in range(1):
         lambda_update=True,
         delta_update=True,
         plot_results=False,
-        prune_rank=True,
+        prune_rank=False,
     )
 
   # Predict (mse is returned by the predict function)

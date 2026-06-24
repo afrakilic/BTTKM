@@ -36,9 +36,9 @@ rmse_values = []
 nll_values = []
 
 start_time = time.time()
-for i in range(1):
+for i in range(10):
     # Split the data
-    np.random.seed(2)
+    np.random.seed(i)
     indices = np.random.permutation(len(X))
     split_index = int(0.90 * len(X))  # 90% for training, 10% for testing
     X_train, X_test = X[indices[:split_index]], X[indices[split_index:]]
@@ -67,12 +67,12 @@ for i in range(1):
         scale_parameter_lambda=d,
         shape_parameter_delta=g,
         scale_parameter_delta=h,
-        max_iter=100,
+        max_iter=50,
         precision_update=True,
         lambda_update=True,
         delta_update=True,
         plot_results=False,
-        prune_rank=True,
+        prune_rank=False,
     )
 
        # Predict (mse is returned by the predict function)

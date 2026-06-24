@@ -37,9 +37,9 @@ nll_values = []
 # Loop 10 times to run the training and evaluation
 
 start_time = time.time()
-for i in range(1):
+for i in range(10):
     # Split the data
-    np.random.seed(3)
+    np.random.seed(i)
     indices = np.random.permutation(len(X))
     split_index = int(0.90 * len(X))  # 90% for training, 10% for testing
     X_train, X_test = X[indices[:split_index]], X[indices[split_index:]]
@@ -68,12 +68,12 @@ for i in range(1):
         scale_parameter_lambda=d,
         shape_parameter_delta=g,
         scale_parameter_delta=h,
-        max_iter=100,
+        max_iter=50,
         precision_update=True,
         lambda_update=True,
         delta_update=True,
         plot_results=False,
-        prune_rank=True,
+        prune_rank=False,
     )
 
        # Predict (mse is returned by the predict function)
@@ -87,47 +87,28 @@ for i in range(1):
     # rmse
     rmse = np.sqrt(np.mean((prediction_mean_unscaled - y_test) ** 2))
     rmse_values.append(rmse)
-
-    # rmse = np.sqrt(np.mean((y_test - prediction_mean) ** 2))
-    print(f"RMSE: {rmse:.4f}")
      # nll
     nll = 0.5 * np.log(2 * np.pi * prediction_std_unscaled**2) + 0.5 * (
         (y_test.flatten() - prediction_mean_unscaled.flatten()) ** 2
     ) / (prediction_std_unscaled**2)
     
     nll_values.append(np.mean(nll))
-    print(nll_values)
+
 
 
 end_time = time.time()
 
 total_runtime_seconds = end_time - start_time
 
-sort_idx = np.argsort(y_test.flatten())
-y_sorted    = y_test.flatten()[sort_idx]
-mean_sorted = prediction_mean_unscaled.flatten()[sort_idx]
-std_sorted  = prediction_std_unscaled.flatten()[sort_idx]
-
-plt.figure(figsize=(10, 5))
-plt.plot(y_sorted, label="True", linewidth=1.5, color='black')
-plt.plot(mean_sorted, label="Predicted", linewidth=1.5, linestyle='--', color='blue')
-plt.fill_between(
-    np.arange(len(mean_sorted)),
-    mean_sorted - 2 * std_sorted,
-    mean_sorted + 2 * std_sorted,
-    alpha=0.3, color='blue', label='95% CI (±2σ)'
-)
-plt.xlabel("Sample Index (sorted by true value)")
-plt.ylabel("Target Value")
-plt.title("Predictions with Uncertainty Bounds")
-plt.legend()
-plt.tight_layout()
-plt.show()
-
 print(f"Total runtime for 10 runs: {total_runtime_seconds:.2f} seconds")
 print(
     f"Mean RMSE: {np.mean(rmse_values)}, Standard Deviation of RMSE: {np.std(rmse_values)}"
 )
+print(
+    f"Mean NLL : {np.mean(nll_values)}, Standard Deviation of NLL: {np.std(nll_values)}"
+)
+
+
 # REPORTED
 # input_dimension = 20
 # max_rank = 50
