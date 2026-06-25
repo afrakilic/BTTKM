@@ -24,9 +24,9 @@ y = df[:, 5].reshape(-1, 1)
 input_dimension = 20
 max_rank = 5
 
-a, b = 1, 1e-3
-c, d = 1e-6 , 1e-6 
-g, h = 1e-6, 1e-6 
+a, b = 1e+2, 1e-1
+c, d = 1e+0, 1e-1
+g, h = 1e-1, 1e-1
 
 R_effective = []
 rmse_values = []
@@ -108,7 +108,7 @@ print(
 # REPORTED
 # input_dimension = 20
 # # max_rank = 5
-# Total runtime for 10 runs: 583.90 seconds
-# Mean RMSE: 1.4790308560652934, Standard Deviation of RMSE: 0.1453757602092484
-# Mean NLL : 1.8476694993147837, Standard Deviation of NLL: 0.1473241736805655
+# Total runtime for 10 runs: 548.51 seconds
+# Mean RMSE: 1.4498221720633062, Standard Deviation of RMSE: 0.170595456942083
+# Mean NLL : 1.8996012098714778, Standard Deviation of NLL: 0.22264085192677024
 # ############################################################

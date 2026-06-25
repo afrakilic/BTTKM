@@ -121,13 +121,18 @@ class bttkm:
                                                 R_d=W_D[d].shape[0],
                                                 M_d=W_D[d].shape[1],
                                                 R_next=W_D[d].shape[2])
-                
-                kron_term = np.kron(np.kron(lambdas[d+1] * np.eye(Rs[d+1]),
-                             deltas[d]    * np.eye(Ms[d])),
-                             lambdas[d]   * np.eye(Rs[d]))
-
             
-                Sigma[d] = np.linalg.pinv(tau * ggT + np.kron(np.kron(lambdas[d+1]* np.eye(Rs[d+1]), deltas[d]*np.eye(Ms[d])), lambdas[d]*np.eye(Rs[d])))
+                # Sigma[d] = np.linalg.pinv(tau * ggT + np.kron(np.kron(lambdas[d+1]* np.eye(Rs[d+1]), deltas[d]*np.eye(Ms[d])), lambdas[d]*np.eye(Rs[d])))
+ 
+
+                A = tau * ggT + np.kron(np.kron(lambdas[d+1] * np.eye(Rs[d+1]),
+                                                deltas[d]    * np.eye(Ms[d])),
+                                                lambdas[d]   * np.eye(Rs[d]))
+
+                eigvals, eigvecs = np.linalg.eigh(A)
+                eigvals_clipped = np.maximum(eigvals, 1e-10 * eigvals.max())
+                Sigma[d] = eigvecs @ np.diag(1.0 / eigvals_clipped) @ eigvecs.T
+                
                 W_D[d] = (tau * Sigma[d] @ Gd.T @ Y).reshape(W_D[d].shape, order="F")
 
                  # #lambda updates 
@@ -153,8 +158,6 @@ class bttkm:
                         
                         lambdas[d] = cNs[d] / dNs[d]
 
-
-    
             
                 #delta updates 
                 if it > 5 and delta_update:
@@ -197,7 +200,7 @@ class bttkm:
                     stack = np.hstack((W_D_mode3[d-1], W_D_mode1[d]))
                     comPower = np.diag(stack @ stack.T)
                     var_explained = comPower / np.sum(comPower) * 100
-                    keep_R = var_explained >= 1
+                    keep_R = var_explained >= 1e-2
 
                     if np.all(keep_R):
                         continue
@@ -239,8 +242,6 @@ class bttkm:
                     ])
                     Sigma[d] = Sigma[d][np.ix_(flat_d, flat_d)]
 
-
-            
 
              # FIT METRIC
             if classification:
@@ -363,7 +364,7 @@ class bttkm:
                 plt.tight_layout()
                 plt.savefig("elbo_terms.png", dpi=150)
                 plt.show()
-
+        
         self.W_D = W_D
         self.V = Sigma
         self.a = a_N
@@ -434,7 +435,7 @@ class bttkm:
 
                 GL_env = compute_G_left([Phi[d]], [self.W_D[d]], N, G0=GL_env)
 
-            # Student-t predictive variance (same scaling as CPD)
+            # Student-t predictive variance 
             S = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (sum_matrix / (D * I * R^2)))
             std_dev = np.sqrt(np.diag(S))
 

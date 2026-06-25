@@ -26,11 +26,10 @@ y = df[:, 8].reshape(-1, 1)   # target
 input_dimension = 20
 max_rank = 5
 
-a, b = 1, 1e-3
-c, d = 1e-6 , 1e-6 
-g, h = 1e-6, 1e-6
+a, b = 1e+2, 1e-1
+c, d = 1e+0, 1e-1
+g, h = 1e-1, 1e-1
 
-R_effective = []
 rmse_values = []
 nll_values = []
 
@@ -112,7 +111,7 @@ print(
 # REPORTED
 # input_dimension = 20
 # max_rank = 5
-# Total runtime for 10 runs: 1335.13 seconds
-# Mean RMSE: 5.404297571697654, Standard Deviation of RMSE: 0.5550491047941155
-# Mean NLL : 3.1514183085280045, Standard Deviation of NLL: 0.16176471473256515
+# Total runtime for 10 runs: 1489.02 seconds
+# Mean RMSE: 5.0075503184237835, Standard Deviation of RMSE: 0.6389207195504153
+# Mean NLL : 3.309873631725213, Standard Deviation of NLL: 0.3043675474789911
 ############################################################

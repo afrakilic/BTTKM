@@ -27,10 +27,9 @@ y = df[:, 6].reshape(-1, 1)  # target
 input_dimension = 20
 max_rank = 5
 
-a, b = 1, 1e-3
-c, d = 1e-6 , 1e-6
-g, h = 1e-6, 1e-6
-
+a, b = 1e+2, 1e-1
+c, d = 1e+0, 1e-1
+g, h = 1e-1, 1e-1
 
 R_effective = []
 rmse_values = []
@@ -38,7 +37,7 @@ nll_values = []
 
 # Loop 10 times to run the training and evaluation
 start_time = time.time()
-for i in range(1):
+for i in range(10):
     # Split the data
     np.random.seed(i)
     indices = np.random.permutation(len(X))
@@ -73,8 +72,8 @@ for i in range(1):
         precision_update=True,
         lambda_update=True,
         delta_update=True,
-        plot_results=True,
-        prune_rank=False,
+        plot_results=False,
+        prune_rank=False
     )
 
     # Predict (mse is returned by the predict function)
@@ -112,6 +111,6 @@ print(
 # REPORTED
 # input_dimension = 20
 # max_rank = 5
-# Total runtime for 10 runs: 474.25 seconds
-# Mean RMSE: 0.47699896168910927, Standard Deviation of RMSE: 0.12241675111590107
-# Mean NLL : 0.7259595023638831, Standard Deviation of NLL: 0.22834178335627703
+# Total runtime for 10 runs: 339.75 seconds
+# Mean RMSE: 0.42665511052796123, Standard Deviation of RMSE: 0.10270645678585054
+# Mean NLL : 0.6010976983396915, Standard Deviation of NLL: 0.2395664597309213
