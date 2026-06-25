@@ -75,7 +75,7 @@ for i in range(10):
         prune_rank=False,
     )
 
-       # Predict (mse is returned by the predict function)
+# Predict (mse is returned by the predict function)
     prediction_mean,prediction_std, mse = model.predict(
         features=X_test, input_dimension=input_dimension, rank = max_rank
     )
@@ -87,51 +87,30 @@ for i in range(10):
     rmse = np.sqrt(np.mean((prediction_mean_unscaled - y_test) ** 2))
     rmse_values.append(rmse)
 
-    # rmse = np.sqrt(np.mean((y_test - prediction_mean) ** 2))
-    print(f"RMSE: {rmse:.4f}")
      # nll
     nll = 0.5 * np.log(2 * np.pi * prediction_std_unscaled**2) + 0.5 * (
         (y_test.flatten() - prediction_mean_unscaled.flatten()) ** 2
     ) / (prediction_std_unscaled**2)
     
     nll_values.append(np.mean(nll))
-    print(nll_values)
-
 
 end_time = time.time()
 
 total_runtime_seconds = end_time - start_time
 
-sort_idx = np.argsort(y_test.flatten())
-y_sorted    = y_test.flatten()[sort_idx]
-mean_sorted = prediction_mean_unscaled.flatten()[sort_idx]
-std_sorted  = prediction_std_unscaled.flatten()[sort_idx]
-
-plt.figure(figsize=(10, 5))
-plt.plot(y_sorted, label="True", linewidth=1.5, color='black')
-plt.plot(mean_sorted, label="Predicted", linewidth=1.5, linestyle='--', color='blue')
-plt.fill_between(
-    np.arange(len(mean_sorted)),
-    mean_sorted - 2 * std_sorted,
-    mean_sorted + 2 * std_sorted,
-    alpha=0.3, color='blue', label='95% CI (±2σ)'
-)
-plt.xlabel("Sample Index (sorted by true value)")
-plt.ylabel("Target Value")
-plt.title("Predictions with Uncertainty Bounds")
-plt.legend()
-plt.tight_layout()
-plt.show()
 
 print(f"Total runtime for 10 runs: {total_runtime_seconds:.2f} seconds")
 print(
     f"Mean RMSE: {np.mean(rmse_values)}, Standard Deviation of RMSE: {np.std(rmse_values)}"
 )
+print(
+    f"Mean NLL : {np.mean(nll_values)}, Standard Deviation of NLL: {np.std(nll_values)}"
+)
+
 # REPORTED
 # input_dimension = 20
-# # max_rank = 50
-# Total runtime for 10 runs: 57.00 seconds
-# Mean RMSE: 0.49550474389401866, Standard Deviation of RMSE: 0.143182725282354
-# Mean NLL : 1.5287726696278263, Standard Deviation of NLL: 0.27906834896739774
-# Effective R: 10.1, std: 1.3
+# # max_rank = 5
+# Total runtime for 10 runs: 1402.72 seconds
+# Mean RMSE: 0.6061157829709547, Standard Deviation of RMSE: 0.08456935633670525
+# Mean NLL : 0.9256858307116334, Standard Deviation of NLL: 0.1320853817933378
 # ############################################################

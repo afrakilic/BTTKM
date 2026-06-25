@@ -111,9 +111,8 @@ print(
 
 # REPORTED
 # input_dimension = 20
-# max_rank = 50
-#Total runtime for 10 runs: 61.51 seconds
-# Mean RMSE: 5.390555852806906, Standard Deviation of RMSE: 1.2754230502836805
-# Mean NLL : 3.364109113283404, Standard Deviation of NLL: 0.4277430296085725
-# Effective R: 5.3, std: 0.45825756949558405
+# max_rank = 5
+# Total runtime for 10 runs: 1335.13 seconds
+# Mean RMSE: 5.404297571697654, Standard Deviation of RMSE: 0.5550491047941155
+# Mean NLL : 3.1514183085280045, Standard Deviation of NLL: 0.16176471473256515
 ############################################################

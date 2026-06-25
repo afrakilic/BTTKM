@@ -1,3 +1,18 @@
+
+"""
+Non-linear model using a Tensor Train (TT) kernel machine of the form y = Φw + e,
+where y is the output, Φ is the feature matrix, w is the weight vector, and e is the error term.
+
+The `bttkm` class provides `train` and `predict` methods. Unlike the CP decomposition (btnkm),
+the weight tensor is parameterized as a Tensor Train (TT) decomposition, where each TT-core
+is updated sequentially via variational inference. Training iteratively updates TT-cores,
+noise precision (tau), and regularization parameters (lambda, delta) with optional rank pruning
+and R-squared monitoring. Predictions include uncertainty estimates via a Student-t predictive
+distribution.
+
+Dependencies and configurations are defined in `config.py`.
+"""
+
 import os, sys
 
 sys.path.append(os.getcwd())
@@ -14,6 +29,7 @@ from functions.TT_helpers import (generate_tt_cores,
                         tt_core_unfolding, 
                         initialize_tt_cores,
                         legendre_basis)
+from functions.utils import (safelog)
 
 
 
@@ -87,7 +103,10 @@ class bttkm:
 
         # Phi = legendre_basis(X, I=I)
         pbar = trange(max_iter, desc="Running", leave=True)
-
+        Fit_history = []
+        LB = np.zeros(max_iter)  # lowerbound
+        LBRelChan = 0  
+        LB_terms = {f"temp{i}": np.zeros(max_iter) for i in range(1, 7)}
         for it in pbar:
 
 
@@ -102,18 +121,23 @@ class bttkm:
                                                 R_d=W_D[d].shape[0],
                                                 M_d=W_D[d].shape[1],
                                                 R_next=W_D[d].shape[2])
-                # Gd@Gd.T
+                
+                kron_term = np.kron(np.kron(lambdas[d+1] * np.eye(Rs[d+1]),
+                             deltas[d]    * np.eye(Ms[d])),
+                             lambdas[d]   * np.eye(Rs[d]))
+
+            
                 Sigma[d] = np.linalg.pinv(tau * ggT + np.kron(np.kron(lambdas[d+1]* np.eye(Rs[d+1]), deltas[d]*np.eye(Ms[d])), lambdas[d]*np.eye(Rs[d])))
-                # Sigma[d] = np.linalg.pinv(ggT)
                 W_D[d] = (tau * Sigma[d] @ Gd.T @ Y).reshape(W_D[d].shape, order="F")
 
-
-
                  # #lambda updates 
-                if it > 5 and lambda_update: 
+                if lambda_update: 
                     if d > 0: 
+
                         Klam1= np.kron(lambdas[d+1]*np.eye(lambdas[d+1].size),deltas[d]*np.eye(deltas[d].size))
                         Klam2= np.kron(deltas[d-1]*np.eye(deltas[d-1].size), lambdas[d-1]*np.eye(lambdas[d-1].size))
+                      
+
                         Sigma_cored = np.diag(Sigma[d]).reshape(W_D[d].shape, order="F")
                         Sigma1= tt_core_unfolding(Sigma_cored, mode=1)[0]
                         W1 =  tt_core_unfolding(W_D[d], mode=1)[0]
@@ -129,33 +153,27 @@ class bttkm:
                             cNs[d] = c0s[d] + 0.5 * (deltas[d-1].size * lambdas[d-1].size + lambdas[d+1].size * deltas[d].size) 
 
                         dNs[d] = d0s[d] + 0.5 * (ewdel1 + ewdel3)
-        
-                        lambdas[d] = cNs[d] /dNs[d]
+    
+                        
+                        lambdas[d] = cNs[d] / dNs[d]
+
 
     
             
                 #delta updates 
-                if it>5 and delta_update:
+                if delta_update:
                     Kdel = np.kron(lambdas[d+1] * np.eye(lambdas[d+1].size), lambdas[d] * np.eye(lambdas[d].size))
-
                     Sigma_cored = np.diag(Sigma[d]).reshape(W_D[d].shape, order="F")
                     Sigma2 = tt_core_unfolding(Sigma_cored, mode=2)[0]
                     W2 = tt_core_unfolding(W_D[d], mode=2)[0]
                     ewdel2 = np.diag(W2 @ Kdel @ W2.T) + Sigma2 @ np.kron(lambdas[d+1], lambdas[d])
                     gNs[d] = g0s[d] + 0.5 * (lambdas[d].size * lambdas[d+1].size)
                     hNs[d] = h0s[d] + 0.5 * ewdel2
-                    deltas[d] = gNs[d] / hNs[d]
+                    deltas[d]  = gNs[d] / hNs[d]
             
             y_hat = compute_G_left(Phi, W_D, N)
-            err = np.dot((Y - y_hat).T, (Y - y_hat))
-
-            def slab_norms(W_d):
-                R_d, M_d, R_next = W_d.shape
-                return np.array([np.linalg.norm(W_d[:, m, :]) for m in range(M_d)])
             
-            
-
-            if it > 5 and precision_update:
+            if precision_update:
                 a_N = a0 + (N / 2)
                 YY = Y.T @ Y
                 YG = -2 * np.dot(Y.T, y_hat)
@@ -165,9 +183,15 @@ class bttkm:
                 a_N = a0
                 b_N = b0
 
+            YY = Y.T @ Y
+            YG = -2 * np.dot(Y.T, y_hat)
+            GG = np.sum(compute_H_left(Phi, W_D, Sigma, N), axis=0)
+            err = float(YY + YG + GG)
+
             tau = a_N / b_N
 
-            #rank pruning 
+            # Rank pruning (optional)
+
             W_D_mode1 = tt_core_unfolding(W_D, mode=1)
             W_D_mode2 = tt_core_unfolding(W_D, mode=2)
             W_D_mode3 = tt_core_unfolding(W_D, mode=3)
@@ -184,22 +208,20 @@ class bttkm:
 
                     idx = np.where(keep_R)[0]
 
-                        # snapshot old sizes before any update
                     R_d_old = Rs[d]      # == len(keep_R) by construction
                     I_prev  = Ms[d-1]
                     R_prev  = Rs[d-1]
                     I_d     = Ms[d]
                     R_next  = Rs[d+1]
 
-
-                    # --- trim cores ---
+                    # trim cores 
                     W_D[d-1] = W_D[d-1][:, :, keep_R]   # mode-3 of core d-1
                     W_D[d]   = W_D[d][keep_R, :, :]      # mode-1 of core d
 
-                    # --- update Rs ---
+                    # update Rs
                     Rs[d] = int(np.sum(keep_R))
 
-                    # --- trim all lambda-related vectors at boundary d ---
+                    # trim all lambda-related vectors at boundary d 
                     # all have current length R_d_old
                     lambdas[d] = lambdas[d][keep_R]
                     cNs[d]     = cNs[d][keep_R]
@@ -207,7 +229,7 @@ class bttkm:
                     c0s[d]     = c0s[d][keep_R]
                     d0s[d]     = d0s[d][keep_R]
 
-                    # --- trim Sigma[d-1]: R_d is mode-3 (fastest in Fortran vec) ---
+                    # trim Sigma[d-1]: R_d is mode-3 
                     flat_dm1 = np.concatenate([
                         rb * I_prev * R_d_old + ib * R_d_old + idx
                         for rb in range(R_prev)
@@ -215,11 +237,14 @@ class bttkm:
                     ])
                     Sigma[d-1] = Sigma[d-1][np.ix_(flat_dm1, flat_dm1)]
 
-                    # --- trim Sigma[d]: R_d is mode-1 (slowest in Fortran vec) ---
+                    # trim Sigma[d]: R_d is mode-1 
                     flat_d = np.concatenate([
                         np.arange(r * I_d * R_next, (r + 1) * I_d * R_next) for r in idx
                     ])
                     Sigma[d] = Sigma[d][np.ix_(flat_d, flat_d)]
+
+
+            
 
              # FIT METRIC
             if classification:
@@ -229,14 +254,120 @@ class bttkm:
                 rss = np.sum((Y.reshape(-1,1) - y_hat)**2)
                 Fit = 1 - (rss / tss)  # R-squared
 
-            
-            
-            pbar.set_postfix(Fit=f"{float(Fit):.4f}")
+            Fit_history.append(float(Fit))
 
-        for d in range(D):
-                norms = slab_norms(W_D[d])
-                rho, p = spearmanr(deltas[d], norms)  
-                print(f"core {d}: spearman(delta, ||slab||) = {rho:.3f} (p={p:.3f})")
+
+            # LOWER BOUND
+
+            temp1 = -0.5 * (tau) * err    
+
+            temp2 = 0
+            for d in range(D):
+                matrix_d = np.kron(np.kron(lambdas[d+1] * np.eye(Rs[d+1]), deltas[d] * np.eye(Ms[d])), lambdas[d] * np.eye(Rs[d])) @ (
+                    np.outer(W_D[d].ravel(order="F"), W_D[d].ravel(order="F"))
+                    + Sigma[d]
+                )
+                temp2 += -0.5 * np.trace(matrix_d)
+
+            temp3 = 0.0
+            for W in Sigma:
+                sign, logdet = np.linalg.slogdet(W)
+                if sign <= 0:
+                    # Sigma should be PD; if not, pinv gave a bad result
+                    logdet = -1e10  
+                temp3 += 0.5 * logdet
+
+            temp4 = sum(
+                np.sum(cNs[d] * (1 - safelog(dNs[d]) - (d0s[d] / dNs[d])))
+                for d in range(1,D)
+            )
+            temp5 = sum(
+                np.sum(
+                    np.array(gNs[d]) * (1 - safelog(np.array(hNs[d])) - (h0s[d] / np.array(hNs[d])))
+                )
+                for d in range(len(gNs))
+            )
+            temp6 = a_N * (1 - safelog(b_N) - (b0 / b_N))  # + gammaln(a_N)
+
+            LB_terms["temp1"][it] = temp1
+            LB_terms["temp2"][it] = temp2
+            LB_terms["temp3"][it] = temp3
+            LB_terms["temp4"][it] = temp4
+            LB_terms["temp5"][it] = temp5
+            LB_terms["temp6"][it] = temp6
+
+            LB[it] = temp1 +temp2 + temp4+ temp5+ temp6 
+
+
+
+            # CONVERGENCE CHECK
+            if it > 2:
+                LBRelChan = (LB[it] - LB[it - 1]) / LB[2]
+
+            else:
+                LBRelChan = np.nan
+
+            # Display progress for every iteration
+            pbar.set_postfix(
+                {
+                    "RelChan": f"{LBRelChan:.2e}",
+                    "Fit": f"{Fit:.4f}",
+                    "err": f"{err:.1e}"
+                }
+            )
+            # Convergence checks
+            if it > 5:
+                if abs(LBRelChan) < lower_bound_tol:
+                    print("======= Converged =======")
+                    break
+
+        self.LB = LB[:it+1]
+        self.Fit_history = Fit_history
+
+        if plot_results:
+        
+            self.LB = LB[:it+1]
+            self.Fit_history = Fit_history
+            self.LB_terms = {k: v[:it+1] for k, v in LB_terms.items()}
+
+            if plot_results:
+                labels = {
+                    "temp1": r"$-\frac{\tau}{2}\|y - \hat{y}\|^2$" + "\n(likelihood)",
+                    "temp2": r"$-\frac{1}{2}\mathrm{tr}(\Lambda W W^\top)$" + "\n(prior on W)",
+                    "temp3": r"$\frac{1}{2}\log|\Sigma|$" + "\n(entropy of W)",
+                    "temp4": r"$\sum c_N(1 - \log d_N)$" + "\n(lambda term)",
+                    "temp5": r"$\sum g_N(1 - \log h_N)$" + "\n(delta term)",
+                    "temp6": r"$a_N(1 - \log b_N)$" + "\n(tau term)",
+                }
+                colors = ["steelblue", "darkorange", "forestgreen", "orchid", "tomato", "goldenrod"]
+
+                fig, axes = plt.subplots(2, 4, figsize=(18, 7))
+                axes = axes.flatten()
+
+                for i, (key, color) in enumerate(zip(LB_terms.keys(), colors)):
+                    axes[i].plot(self.LB_terms[key], color=color, linewidth=2)
+                    axes[i].set_title(labels[key], fontsize=9)
+                    axes[i].set_xlabel("Iteration", fontsize=8)
+                    axes[i].grid(True, alpha=0.3)
+
+                # 7th panel: total ELBO
+                axes[6].plot(self.LB, color="black", linewidth=2)
+                axes[6].set_title("Total ELBO", fontsize=9)
+                axes[6].set_xlabel("Iteration", fontsize=8)
+                axes[6].grid(True, alpha=0.3)
+
+                # 8th panel: R² fit
+                axes[7].plot(Fit_history, color="teal", linewidth=2)
+                axes[7].axhline(y=1.0, color="gray", linestyle="--", alpha=0.5)
+                axes[7].set_title("Training Fit (R²)", fontsize=9)
+                axes[7].set_xlabel("Iteration", fontsize=8)
+                axes[7].grid(True, alpha=0.3)
+
+                plt.suptitle("ELBO Terms per Iteration", fontsize=12, fontweight="bold")
+                plt.tight_layout()
+                plt.savefig("elbo_terms.png", dpi=150)
+                plt.show()
+
         self.W_D = W_D
         self.V = Sigma
         self.a = a_N
@@ -287,8 +418,7 @@ class bttkm:
             # Phi = legendre_basis(X, I=I)
             predictions = compute_G_left(Phi, self.W_D, N)
 
-        # --- Uncertainty Quantification ---
-            # Precompute all right envelopes
+        #  Uncertainty Quantification 
             GR_env = [None] * (D + 1)
             GR_env[D] = np.ones((N, 1))
             for k in range(D - 1, -1, -1):
@@ -301,8 +431,6 @@ class bttkm:
                 G_left  = GL_env          # (N, Rs[d])
                 G_right = GR_env[d + 1]  # (N, Rs[d+1])
 
-                # Effective regressor for core d: khatri-rao of (G_right ⊙ Phi[d] ⊙ G_left)
-                # shape: (N, Rs[d+1] * Ms[d] * Rs[d])  — same as Gd in training
                 x_d = khatri_rao_rows(khatri_rao_rows(G_right, Phi[d]), G_left)  # (N, Rs[d]*Ms[d]*Rs[d+1])
 
                 # x_d @ V[d] @ x_d.T contributes the posterior variance for core d
