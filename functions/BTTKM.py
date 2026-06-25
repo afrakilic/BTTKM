@@ -131,27 +131,23 @@ class bttkm:
                 W_D[d] = (tau * Sigma[d] @ Gd.T @ Y).reshape(W_D[d].shape, order="F")
 
                  # #lambda updates 
-                if lambda_update: 
+                if it > 5 and lambda_update: 
                     if d > 0: 
 
                         Klam1= np.kron(lambdas[d+1]*np.eye(lambdas[d+1].size),deltas[d]*np.eye(deltas[d].size))
                         Klam2= np.kron(deltas[d-1]*np.eye(deltas[d-1].size), lambdas[d-1]*np.eye(lambdas[d-1].size))
                       
-
                         Sigma_cored = np.diag(Sigma[d]).reshape(W_D[d].shape, order="F")
                         Sigma1= tt_core_unfolding(Sigma_cored, mode=1)[0]
                         W1 =  tt_core_unfolding(W_D[d], mode=1)[0]
-                        ewdel1 = np.diag(W1 @ Klam1 @ W1.T) + Sigma1 @ np.kron(lambdas[d+1],deltas[d])
+                        ewdel1 = np.diag(W1 @ Klam1 @ W1.T) + Sigma1 @ np.kron(lambdas[d+1],deltas[d]
+                                                                               )
                         Sigma_coreb = np.diag(Sigma[d-1]).reshape(W_D[d-1].shape, order="F")
                         Sigma3 = tt_core_unfolding(Sigma_coreb, mode=3)[0]
                         W3 =  tt_core_unfolding(W_D[d-1], mode=3)[0]
-                        if d == 0:
-                            ewdel3 = 0
-                            cNs[d] = c0s[d] + 0.5 * (lambdas[d+1].size * deltas[d].size) 
-                        else:    
-                            ewdel3 = np.diag(W3 @ Klam2 @ W3.T) + Sigma3 @ np.kron(deltas[d-1],lambdas[d-1])
-                            cNs[d] = c0s[d] + 0.5 * (deltas[d-1].size * lambdas[d-1].size + lambdas[d+1].size * deltas[d].size) 
-
+                        ewdel3 = np.diag(W3 @ Klam2 @ W3.T) + Sigma3 @ np.kron(deltas[d-1],lambdas[d-1])
+                    
+                        cNs[d] = c0s[d] + 0.5 * (deltas[d-1].size * lambdas[d-1].size + lambdas[d+1].size * deltas[d].size) 
                         dNs[d] = d0s[d] + 0.5 * (ewdel1 + ewdel3)
     
                         
@@ -161,7 +157,7 @@ class bttkm:
     
             
                 #delta updates 
-                if delta_update:
+                if it > 5 and delta_update:
                     Kdel = np.kron(lambdas[d+1] * np.eye(lambdas[d+1].size), lambdas[d] * np.eye(lambdas[d].size))
                     Sigma_cored = np.diag(Sigma[d]).reshape(W_D[d].shape, order="F")
                     Sigma2 = tt_core_unfolding(Sigma_cored, mode=2)[0]
@@ -173,7 +169,7 @@ class bttkm:
             
             y_hat = compute_G_left(Phi, W_D, N)
             
-            if precision_update:
+            if it > 5 and  precision_update:
                 a_N = a0 + (N / 2)
                 YY = Y.T @ Y
                 YG = -2 * np.dot(Y.T, y_hat)
