@@ -29,9 +29,9 @@ y = np.where(y > 0, 1, -1)
 input_dimension = 30
 max_rank = 5
 
-a, b = 1e-1, 1e-3
-c, d = 1e-6 , 1e-6 
-g, h = 1e-6, 1e-6 
+a, b = 1e+2, 1e-1
+c, d = 1e+0, 1e-1
+g, h = 1e-1, 1e-1
 
 # Store the MSE results
 mse_values = []
