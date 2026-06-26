@@ -107,17 +107,39 @@ class bttkm:
         LB = np.zeros(max_iter)  # lowerbound
         LBRelChan = 0  
         LB_terms = {f"temp{i}": np.zeros(max_iter) for i in range(1, 7)}
+
+
+        G_left_env = [None] * (D + 1)
+        H_left_env = [None] * (D + 1)
+        G_left_env[0] = np.ones((N, 1))
+        H_left_env[0] = np.ones((N, 1))
+
         for it in pbar:
 
-
+            G_right_env = [None] * (D + 1)
+            H_right_env = [None] * (D + 1)
+            G_right_env[D] = np.ones((N, 1))
+            H_right_env[D] = np.ones((N, 1))
+            for k in range(D - 1, -1, -1):
+                G_right_env[k] = compute_G_right([Phi[k]], [W_D[k]], N, G0=G_right_env[k + 1])
+                H_right_env[k] = compute_H_right([Phi[k]], [W_D[k]], [Sigma[k]], N, H0=H_right_env[k + 1])  # G0 → H0
             for d in range(D):
-                    #tensor core update 
-                G_left = compute_G_left(Phi[:d], W_D[:d], N)
-                G_right = compute_G_right(Phi[d+1:], W_D[d+1:], N) 
-                Gd = khatri_rao_rows(khatri_rao_rows(G_right, Phi[d]), G_left)
-                H_left = compute_H_left(Phi[:d], W_D[:d], Sigma[:d], N)
-                H_right = compute_H_right(Phi[d+1:], W_D[d+1:], Sigma[d+1:],N)
-                ggT = reshape_permute_ggT_to_sigma(khatri_rao_rows(H_left, Phi[d]).T @ khatri_rao_rows(H_right, Phi[d]),
+                
+                #     #tensor core update 
+                # G_left = compute_G_left(Phi[:d], W_D[:d], N)
+                # G_right = compute_G_right(Phi[d+1:], W_D[d+1:], N) 
+                # H_left = compute_H_left(Phi[:d], W_D[:d], Sigma[:d], N)
+                # H_right = compute_H_right(Phi[d+1:], W_D[d+1:], Sigma[d+1:],N)
+                # Gd_1 = khatri_rao_rows(khatri_rao_rows(G_right, Phi[d]), G_left)
+
+                G_left_curr  = G_left_env[d]
+                G_right_curr = G_right_env[d + 1]
+                H_left_curr  = H_left_env[d]
+                H_right_curr = H_right_env[d + 1]
+
+                Gd  = khatri_rao_rows(khatri_rao_rows(G_right_curr, Phi[d]), G_left_curr)
+
+                ggT = reshape_permute_ggT_to_sigma( khatri_rao_rows(H_left_curr, Phi[d]).T @ khatri_rao_rows(H_right_curr, Phi[d]),
                                                 R_d=W_D[d].shape[0],
                                                 M_d=W_D[d].shape[1],
                                                 R_next=W_D[d].shape[2])
@@ -135,6 +157,9 @@ class bttkm:
                 
                 W_D[d] = (tau * Sigma[d] @ Gd.T @ Y).reshape(W_D[d].shape, order="F")
 
+
+                G_left_env[d + 1] = compute_G_left([Phi[d]], [W_D[d]], N, G0=G_left_env[d])
+                H_left_env[d + 1] = compute_H_left([Phi[d]], [W_D[d]], [Sigma[d]], N, H0=H_left_env[d])  # G0 → H0
                  # #lambda updates 
                 if it > 5 and lambda_update: 
                     if d > 0: 
