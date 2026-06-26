@@ -27,7 +27,7 @@ y = np.where(y > 0, 1, -1)
 
 # hyper-parameters
 input_dimension = 30
-max_rank = 5
+max_rank = 3
 
 a, b = 1e+2, 1e-1
 c, d = 1e+0, 1e-1
@@ -40,9 +40,9 @@ nll_values = []
 
 # Loop 10 times to run the training and evaluation
 start_time = time.time()
-for i in range(1):
+for i in range(10):
     # Split the data
-    np.random.seed(2)
+    np.random.seed(i)
     indices = np.random.permutation(len(X))
     split_index = int(0.90 * len(X))  # 90% for training, 10% for testing
     X_train, X_test = X[indices[:split_index]], X[indices[split_index:]]
