@@ -77,7 +77,7 @@ for i in range(1):
     )
 
     # Predict (mse is returned by the predict function)
-    prediction_mean, mse = model.predict(
+    prediction_mean,prediction_std, mse = model.predict(
         features=X_test,
         input_dimension=input_dimension,
         rank=max_rank,
@@ -88,15 +88,15 @@ for i in range(1):
     mse_values.append(mse)
 
     # # NLL
-    # probs_gt_zero = norm.sf(0, loc=prediction_mean, scale=prediction_std)  # P(y > 0)
-    # y_test_binary = (y_test + 1) // 2
-    # eps = 1e-15
-    # y_pred_prob = np.clip(probs_gt_zero, eps, 1 - eps)
-    # nll = -np.mean(
-    #     y_test_binary * np.log(y_pred_prob)
-    #     + (1 - y_test_binary) * np.log(1 - y_pred_prob)
-    # )
-    # nll_values.append(nll)
+    probs_gt_zero = norm.sf(0, loc=prediction_mean, scale=prediction_std)  # P(y > 0)
+    y_test_binary = (y_test + 1) // 2
+    eps = 1e-15
+    y_pred_prob = np.clip(probs_gt_zero, eps, 1 - eps)
+    nll = -np.mean(
+        y_test_binary * np.log(y_pred_prob)
+        + (1 - y_test_binary) * np.log(1 - y_pred_prob)
+    )
+    nll_values.append(nll)
 
 
 end_time = time.time()
@@ -108,14 +108,14 @@ print(f"Total runtime for 10 runs: {total_runtime_seconds:.2f} seconds")
 
 mean_mse, std_mse = np.mean(mse_values), np.std(mse_values)
 # effective_r, effective_r_std = np.mean(R_effective), np.std(R_effective)
-# mean_nll, std_nll = np.mean(nll_values), np.std(nll_values)
+mean_nll, std_nll = np.mean(nll_values), np.std(nll_values)
 
 
 print(
     f"Mean Missclassication: {mean_mse}, Standard Deviation of Missclassication: {std_mse}"
 )
 # print(f"Mean Effective R: {effective_r}, std: {effective_r_std}")
-# print(f"Mean NLL: {mean_nll}, std_nll: {std_nll} ")
+print(f"Mean NLL: {mean_nll}, std_nll: {std_nll} ")
 
 
 # REPORTED
