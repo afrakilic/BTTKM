@@ -145,11 +145,19 @@ class bttkm:
                                                 R_next=W_D[d].shape[2])
             
                 # Sigma[d] = np.linalg.pinv(tau * ggT + np.kron(np.kron(lambdas[d+1]* np.eye(Rs[d+1]), deltas[d]*np.eye(Ms[d])), lambdas[d]*np.eye(Rs[d])))
+
+                kron_term = np.kron(np.kron(lambdas[d+1] * np.eye(Rs[d+1]),
+                             deltas[d]    * np.eye(Ms[d])),
+                             lambdas[d]   * np.eye(Rs[d]))
+
+                kron_term = np.clip(kron_term, 1e-6, 1e4)
+
+                A = tau * ggT + kron_term
  
 
-                A = tau * ggT + np.kron(np.kron(lambdas[d+1] * np.eye(Rs[d+1]),
-                                                deltas[d]    * np.eye(Ms[d])),
-                                                lambdas[d]   * np.eye(Rs[d]))
+                # A = tau * ggT + np.kron(np.kron(lambdas[d+1] * np.eye(Rs[d+1]),
+                #                                 deltas[d]    * np.eye(Ms[d])),
+                #                                 lambdas[d]   * np.eye(Rs[d]))
 
                 eigvals, eigvecs = np.linalg.eigh(A)
                 eigvals_clipped = np.maximum(eigvals, 1e-10 * eigvals.max())
@@ -182,6 +190,7 @@ class bttkm:
     
                         
                         lambdas[d] = cNs[d] / dNs[d]
+                        lambdas[d][lambdas[d] < 1e-5] = 1e-5
 
             
                 #delta updates 
@@ -194,6 +203,7 @@ class bttkm:
                     gNs[d] = g0s[d] + 0.5 * (lambdas[d].size * lambdas[d+1].size)
                     hNs[d] = h0s[d] + 0.5 * ewdel2
                     deltas[d]  = gNs[d] / hNs[d]
+                    deltas[d][deltas[d] < 1e-5] = 1e-5
             
             y_hat = compute_G_left(Phi, W_D, N)
             
@@ -318,7 +328,7 @@ class bttkm:
             LB_terms["temp5"][it] = temp5
             LB_terms["temp6"][it] = temp6
 
-            LB[it] = temp1 +temp2 + temp4+ temp5+ temp6 
+            LB[it] = temp1 + temp2 + temp3 + temp4 + temp5 + temp6
 
 
 
