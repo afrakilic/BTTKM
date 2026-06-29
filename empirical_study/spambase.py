@@ -72,7 +72,7 @@ for i in range(1):
         lambda_update=True,
         delta_update=True,
         plot_results=False,
-        prune_rank=True,
+        prune_rank=False,
         classification=True,
     )
 
