@@ -29,7 +29,8 @@ max_rank = 5
 
 a, b = 1e+2, 1e-1
 c, d = 1e+0, 1e-1
-g, h = 1e-1, 1e-1
+g, h = 1e+0, 1e-1
+
 
 R_effective = []
 rmse_values = []
