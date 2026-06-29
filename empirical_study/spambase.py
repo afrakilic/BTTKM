@@ -30,7 +30,7 @@ input_dimension = 30
 max_rank = 3
 
 a, b = 1e+2, 1e-1
-c, d = 1e+0, 1e-1
+c, d = 1e-1, 1e-1
 g, h = 1e-1, 1e-1
 
 # Store the MSE results
@@ -40,7 +40,7 @@ nll_values = []
 
 # Loop 10 times to run the training and evaluation
 start_time = time.time()
-for i in range(10):
+for i in range(1):
     # Split the data
     np.random.seed(i)
     indices = np.random.permutation(len(X))
