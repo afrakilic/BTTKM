@@ -150,7 +150,7 @@ class bttkm:
                              deltas[d]    * np.eye(Ms[d])),
                              lambdas[d]   * np.eye(Rs[d]))
 
-                kron_term = np.clip(kron_term, 1e-3, 1e3)
+                kron_term = np.cbrt(kron_term)  #np.clip(kron_term, 1e-3, 1e3)
 
                 A = tau * ggT + kron_term
  
@@ -206,28 +206,23 @@ class bttkm:
                     deltas[d][deltas[d] < 1e-5] = 1e-5
             
             y_hat = compute_G_left(Phi, W_D, N)
-            
-            if it > 5 and  precision_update:
-                a_N = a0 + (N / 2)
-                YY = Y.T @ Y
-                YG = -2 * np.dot(Y.T, y_hat)
-                GG = np.sum(compute_H_left(Phi, W_D, Sigma, N), axis=0)
-                b_N = b0 + (0.5 * (YY + YG + GG))
-            else:
-                a_N = a0
-                b_N = b0
-
             YY = Y.T @ Y
             YG = -2 * np.dot(Y.T, y_hat)
             GG = np.sum(compute_H_left(Phi, W_D, Sigma, N), axis=0)
             err = float(YY + YG + GG)
+
+            if it > 5 and  precision_update:
+                a_N = a0 + (N / 2)
+                b_N = b0 + (0.5 * err)
+            else:
+                a_N = a0
+                b_N = b0
 
             tau = a_N / b_N
 
             # Rank pruning (optional)
 
             W_D_mode1 = tt_core_unfolding(W_D, mode=1)
-            W_D_mode2 = tt_core_unfolding(W_D, mode=2)
             W_D_mode3 = tt_core_unfolding(W_D, mode=3)
 
             if it > 0 and it % 5 == 0 and prune_rank:
@@ -254,16 +249,13 @@ class bttkm:
 
                     # update Rs
                     Rs[d] = int(np.sum(keep_R))
-
-                    # trim all lambda-related vectors at boundary d 
-                    # all have current length R_d_old
                     lambdas[d] = lambdas[d][keep_R]
                     cNs[d]     = cNs[d][keep_R]
                     dNs[d]     = dNs[d][keep_R]
                     c0s[d]     = c0s[d][keep_R]
                     d0s[d]     = d0s[d][keep_R]
 
-                    # trim Sigma[d-1]: R_d is mode-3 
+                    # trim Sigma[d-1]
                     flat_dm1 = np.concatenate([
                         rb * I_prev * R_d_old + ib * R_d_old + idx
                         for rb in range(R_prev)
@@ -271,7 +263,7 @@ class bttkm:
                     ])
                     Sigma[d-1] = Sigma[d-1][np.ix_(flat_dm1, flat_dm1)]
 
-                    # trim Sigma[d]: R_d is mode-1 
+                    # trim Sigma[d]
                     flat_d = np.concatenate([
                         np.arange(r * I_d * R_next, (r + 1) * I_d * R_next) for r in idx
                     ])
@@ -352,6 +344,10 @@ class bttkm:
                 if abs(LBRelChan) < lower_bound_tol:
                     print("======= Converged =======")
                     break
+        
+
+        a_N = a0 + (N / 2)
+        b_N = b0 + (0.5 * err)
 
         self.LB = LB[:it+1]
         self.Fit_history = Fit_history
