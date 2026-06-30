@@ -20,8 +20,6 @@ def generate_tt_cores(D, R=4, M=8, Rs=None, Ms=None, seed=None, st = 1):
     W_D = []
     for d in range(D):
         W = st*rng.standard_normal((Rs[d], Ms[d], Rs[d+1]))
-
-        # Frobenius normalization (same as MATLAB: norm(W(:)))
         #W /= np.linalg.norm(W)
 
         W_D.append(W)

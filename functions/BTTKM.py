@@ -153,11 +153,6 @@ class bttkm:
                 kron_term = np.clip(kron_term, 1e-4, 1e4)
 
                 A = tau * ggT + kron_term
- 
-
-                # A = tau * ggT + np.kron(np.kron(lambdas[d+1] * np.eye(Rs[d+1]),
-                #                                 deltas[d]    * np.eye(Ms[d])),
-                #                                 lambdas[d]   * np.eye(Rs[d]))
 
                 eigvals, eigvecs = np.linalg.eigh(A)
                 eigvals_clipped = np.maximum(eigvals, 1e-10 * eigvals.max())
@@ -168,6 +163,7 @@ class bttkm:
 
                 G_left_env[d + 1] = compute_G_left([Phi[d]], [W_D[d]], N, G0=G_left_env[d])
                 H_left_env[d + 1] = compute_H_left([Phi[d]], [W_D[d]], [Sigma[d]], N, H0=H_left_env[d])  # G0 → H0
+
                  # #lambda updates 
                 if it > 5 and lambda_update: 
                     if d > 0: 
@@ -237,7 +233,7 @@ class bttkm:
 
                     idx = np.where(keep_R)[0]
 
-                    R_d_old = Rs[d]      # == len(keep_R) by construction
+                    R_d_old = Rs[d]    
                     I_prev  = Ms[d-1]
                     R_prev  = Rs[d-1]
                     I_d     = Ms[d]

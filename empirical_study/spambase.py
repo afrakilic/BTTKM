@@ -68,7 +68,7 @@ for i in range(1):
         shape_parameter_delta=g,
         scale_parameter_delta=h,
         max_iter=50,
-        precision_update=False,
+        precision_update=True,
         lambda_update=True,
         delta_update=True,
         plot_results=False,
