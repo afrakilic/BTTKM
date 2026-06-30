@@ -57,7 +57,7 @@ for i in range(10):
 
     # train the model
     model =bttkm(X_train.shape[1])
-    W_D,_,_, _ = model.train(
+    W_D, lambdas, deltas, tau = model.train(
         features=X_train,
         target=y_train,
         input_dimension=input_dimension,
@@ -114,3 +114,5 @@ print(
 # Total runtime for 10 runs: 339.75 seconds
 # Mean RMSE: 0.42665511052796123, Standard Deviation of RMSE: 0.10270645678585054
 # Mean NLL : 0.6010976983396915, Standard Deviation of NLL: 0.2395664597309213
+
+
