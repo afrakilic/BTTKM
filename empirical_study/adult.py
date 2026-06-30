@@ -40,7 +40,7 @@ nll_values = []
 
 # Loop 10 times to run the training and evaluation
 start_time = time.time()
-for i in range(1):
+for i in range(10):
     # Split the data
     np.random.seed(i)
     indices = np.random.permutation(len(X))
