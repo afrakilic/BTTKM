@@ -175,11 +175,13 @@ class bttkm:
                         Sigma1= tt_core_unfolding(Sigma_cored, mode=1)[0]
                         W1 =  tt_core_unfolding(W_D[d], mode=1)[0]
                         ewdel1 = np.diag(W1 @ Klam1 @ W1.T) + Sigma1 @ np.kron(lambdas[d+1],deltas[d])
+                        ewdel1 = np.maximum(ewdel1, 1e-4)
 
                         Sigma_coreb = np.diag(Sigma[d-1]).reshape(W_D[d-1].shape, order="F")
                         Sigma3 = tt_core_unfolding(Sigma_coreb, mode=3)[0]
                         W3 =  tt_core_unfolding(W_D[d-1], mode=3)[0]
                         ewdel3 = np.diag(W3 @ Klam2 @ W3.T) + Sigma3 @ np.kron(deltas[d-1],lambdas[d-1])
+                        ewdel3 = np.maximum(ewdel3, 1e-4)
                     
                         cNs[d] = c0s[d] + 0.5 * (deltas[d-1].size * lambdas[d-1].size + lambdas[d+1].size * deltas[d].size) 
                         dNs[d] = d0s[d] + 0.5 * (ewdel1 + ewdel3)
@@ -196,6 +198,7 @@ class bttkm:
                     Sigma2 = tt_core_unfolding(Sigma_cored, mode=2)[0]
                     W2 = tt_core_unfolding(W_D[d], mode=2)[0]
                     ewdel2 = np.diag(W2 @ Kdel @ W2.T) + Sigma2 @ np.kron(lambdas[d+1], lambdas[d])
+                    ewdel2 = np.maximum(ewdel2, 1e-4)
                     gNs[d] = g0s[d] + 0.5 * (lambdas[d].size * lambdas[d+1].size)
                     hNs[d] = h0s[d] + 0.5 * ewdel2
                     deltas[d]  = gNs[d] / hNs[d]
@@ -463,7 +466,7 @@ class bttkm:
                 GL_env = compute_G_left([Phi[d]], [self.W_D[d]], N, G0=GL_env)
 
             # Student-t predictive variance 
-            S = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (sum_matrix / (D * I * R^2)))
+            S = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (sum_matrix / (D * I * R)))
             std_dev = np.sqrt(np.diag(S))
 
             if true_values is not None:
