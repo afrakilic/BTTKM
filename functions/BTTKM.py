@@ -150,7 +150,7 @@ class bttkm:
                              deltas[d]    * np.eye(Ms[d])),
                              lambdas[d]   * np.eye(Rs[d]))
 
-                kron_term = np.cbrt(kron_term)  #np.clip(kron_term, 1e-3, 1e3)
+                kron_term = np.clip(kron_term, 1e-4, 1e4)
 
                 A = tau * ggT + kron_term
  
@@ -178,8 +178,8 @@ class bttkm:
                         Sigma_cored = np.diag(Sigma[d]).reshape(W_D[d].shape, order="F")
                         Sigma1= tt_core_unfolding(Sigma_cored, mode=1)[0]
                         W1 =  tt_core_unfolding(W_D[d], mode=1)[0]
-                        ewdel1 = np.diag(W1 @ Klam1 @ W1.T) + Sigma1 @ np.kron(lambdas[d+1],deltas[d]
-                                                                               )
+                        ewdel1 = np.diag(W1 @ Klam1 @ W1.T) + Sigma1 @ np.kron(lambdas[d+1],deltas[d])
+
                         Sigma_coreb = np.diag(Sigma[d-1]).reshape(W_D[d-1].shape, order="F")
                         Sigma3 = tt_core_unfolding(Sigma_coreb, mode=3)[0]
                         W3 =  tt_core_unfolding(W_D[d-1], mode=3)[0]

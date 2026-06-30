@@ -27,7 +27,7 @@ y = np.where(y > 0, 1, -1)
 
 # hyper-parameters
 input_dimension = 30
-max_rank = 3
+max_rank = 5
 
 a, b = 1e+2, 1e-1
 c, d = 1e-1, 1e-1
@@ -72,7 +72,7 @@ for i in range(1):
         lambda_update=True,
         delta_update=True,
         plot_results=False,
-        prune_rank=True,
+        prune_rank=False,
         classification=True
     )
 
