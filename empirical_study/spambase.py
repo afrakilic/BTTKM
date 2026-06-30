@@ -29,7 +29,7 @@ y = np.where(y > 0, 1, -1)
 input_dimension = 30
 max_rank = 5
 
-a, b = 1e+2, 1e-1
+a, b = 1e+1, 1e-1
 c, d = 1e-1, 1e-1
 g, h = 1e-1, 1e-1
 
@@ -68,7 +68,7 @@ for i in range(1):
         shape_parameter_delta=g,
         scale_parameter_delta=h,
         max_iter=50,
-        precision_update=True,
+        precision_update=False,
         lambda_update=True,
         delta_update=True,
         plot_results=False,
