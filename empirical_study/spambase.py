@@ -30,7 +30,7 @@ input_dimension = 30
 max_rank = 5
 
 a, b = 1e+1, 1e-1
-c, d = 1e-1, 1e-1
+c, d = 1e+0, 1e-1
 g, h = 1e-1, 1e-1
 
 # Store the MSE results
