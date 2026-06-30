@@ -466,7 +466,7 @@ class bttkm:
                 GL_env = compute_G_left([Phi[d]], [self.W_D[d]], N, G0=GL_env)
 
             # Student-t predictive variance 
-            S = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (sum_matrix / (D * I * R)))
+            S = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (sum_matrix / (D * I * (R^2))))
             std_dev = np.sqrt(np.diag(S))
 
             if true_values is not None:

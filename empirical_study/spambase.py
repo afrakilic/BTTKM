@@ -27,7 +27,7 @@ y = np.where(y > 0, 1, -1)
 
 # hyper-parameters
 input_dimension = 30
-max_rank = 5
+max_rank = 3
 
 a, b = 1e+1, 1e-1
 c, d = 1e+0, 1e-1
