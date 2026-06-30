@@ -68,12 +68,12 @@ for i in range(1):
         shape_parameter_delta=g,
         scale_parameter_delta=h,
         max_iter=50,
-        precision_update=True,
+        precision_update=False,
         lambda_update=True,
         delta_update=True,
         plot_results=False,
         prune_rank=False,
-        classification=True,
+        classification=True
     )
 
     # Predict (mse is returned by the predict function)

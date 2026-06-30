@@ -150,7 +150,7 @@ class bttkm:
                              deltas[d]    * np.eye(Ms[d])),
                              lambdas[d]   * np.eye(Rs[d]))
 
-                kron_term = np.clip(kron_term, 1e-6, 1e3)
+                kron_term = np.clip(kron_term, 1e-3, 1e3)
 
                 A = tau * ggT + kron_term
  
