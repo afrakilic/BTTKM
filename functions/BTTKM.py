@@ -154,9 +154,15 @@ class bttkm:
 
                 A = tau * ggT + kron_term
 
-                eigvals, eigvecs = np.linalg.eigh(A)
-                eigvals_clipped = np.maximum(eigvals, 1e-10 * eigvals.max())
-                Sigma[d] = eigvecs @ np.diag(1.0 / eigvals_clipped) @ eigvecs.T
+                try:
+                    eigvals, eigvecs = np.linalg.eigh(A)
+                    eigvals_clipped = np.maximum(eigvals, 1e-10 * np.maximum(eigvals.max(), 1e-10))
+                    Sigma[d] = eigvecs @ np.diag(1.0 / eigvals_clipped) @ eigvecs.T
+                except np.linalg.LinAlgError:
+                    try:
+                        Sigma[d] = np.linalg.pinv(A)
+                    except np.linalg.LinAlgError:
+                        raise RuntimeError(f"INVERSION_FAILED at core d={d}, iter it={it}")
                 
                 W_D[d] = (tau * Sigma[d] @ Gd.T @ Y).reshape(W_D[d].shape, order="F")
 
@@ -466,7 +472,7 @@ class bttkm:
                 GL_env = compute_G_left([Phi[d]], [self.W_D[d]], N, G0=GL_env)
 
             # Student-t predictive variance 
-            S = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (sum_matrix / (D * I * (R^2))))
+            S = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (sum_matrix / (D * I * (R**2))))
             std_dev = np.sqrt(np.diag(S))
 
             if true_values is not None:

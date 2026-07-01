@@ -41,62 +41,71 @@ nll_values = []
 # Loop 10 times to run the training and evaluation
 start_time = time.time()
 for i in range(10):
-    # Split the data
-    np.random.seed(i)
-    indices = np.random.permutation(len(X))
-    split_index = int(0.90 * len(X))  # 90% for training, 10% for testing
-    X_train, X_test = X[indices[:split_index]], X[indices[split_index:]]
-    y_train, y_test = y[indices[:split_index]], y[indices[split_index:]]
-    # === Normalize X_train column-wise ===
-    X_mean = X_train.mean(axis=0)
-    X_std = X_train.std(axis=0)
-    X_std[X_std == 0] = 1
-    X_train = (X_train - X_mean) / X_std
-    X_test = (X_test - X_mean) / X_std  # Use train stats
+    try:
+        # Split the data
+        np.random.seed(i)
+        indices = np.random.permutation(len(X))
+        split_index = int(0.90 * len(X))  # 90% for training, 10% for testing
+        X_train, X_test = X[indices[:split_index]], X[indices[split_index:]]
+        y_train, y_test = y[indices[:split_index]], y[indices[split_index:]]
+        # === Normalize X_train column-wise ===
+        X_mean = X_train.mean(axis=0)
+        X_std = X_train.std(axis=0)
+        X_std[X_std == 0] = 1
+        X_train = (X_train - X_mean) / X_std
+        X_test = (X_test - X_mean) / X_std  # Use train stats
 
-    # train the model
-    model = bttkm(X_train.shape[1])
-    W_D = model.train(
-        features=X_train,
-        target=y_train,
-        input_dimension=input_dimension,
-        max_rank=max_rank,
-        shape_parameter_tau=a,
-        scale_parameter_tau=b,
-        shape_parameter_lambda=c,
-        scale_parameter_lambda=d,
-        shape_parameter_delta=g,
-        scale_parameter_delta=h,
-        max_iter=25,
-        precision_update=True,
-        lambda_update=True,
-        delta_update=True,
-        plot_results=False,
-        prune_rank=False,
-        classification=True
-    )
+        # train the model
+        model = bttkm(X_train.shape[1])
+        W_D = model.train(
+            features=X_train,
+            target=y_train,
+            input_dimension=input_dimension,
+            max_rank=max_rank,
+            shape_parameter_tau=a,
+            scale_parameter_tau=b,
+            shape_parameter_lambda=c,
+            scale_parameter_lambda=d,
+            shape_parameter_delta=g,
+            scale_parameter_delta=h,
+            max_iter=25,
+            precision_update=True,
+            lambda_update=True,
+            delta_update=True,
+            plot_results=False,
+            prune_rank=False,
+            classification=True
+        )
 
-    # Predict (mse is returned by the predict function)
-    prediction_mean,prediction_std, mse = model.predict(
-        features=X_test,
-        input_dimension=input_dimension,
-        rank=max_rank,
-        true_values=y_test,
-        classification=True,
-    )
+        # Predict (mse is returned by the predict function)
+        prediction_mean,prediction_std, mse = model.predict(
+            features=X_test,
+            input_dimension=input_dimension,
+            rank=max_rank,
+            true_values=y_test,
+            classification=True,
+        )
 
-    mse_values.append(mse)
+        mse_values.append(mse)
 
-    # # NLL
-    probs_gt_zero = norm.sf(0, loc=prediction_mean, scale=prediction_std)  # P(y > 0)
-    y_test_binary = (y_test + 1) // 2
-    eps = 1e-15
-    y_pred_prob = np.clip(probs_gt_zero, eps, 1 - eps)
-    nll = -np.mean(
-        y_test_binary * np.log(y_pred_prob)
-        + (1 - y_test_binary) * np.log(1 - y_pred_prob)
-    )
-    nll_values.append(nll)
+        # # NLL
+        probs_gt_zero = norm.sf(0, loc=prediction_mean, scale=prediction_std)  # P(y > 0)
+        y_test_binary = (y_test + 1) // 2
+        eps = 1e-15
+        y_pred_prob = np.clip(probs_gt_zero, eps, 1 - eps)
+        nll = -np.mean(
+            y_test_binary * np.log(y_pred_prob)
+            + (1 - y_test_binary) * np.log(1 - y_pred_prob)
+        )
+        nll_values.append(nll)
+        print(f"Seed {i} — MSE: {mse:.4f}, NLL: {nll:.4f}")
+
+    except RuntimeError as e:
+        if "INVERSION_FAILED" in str(e):
+            print(f"Seed {i} — skipped: {e}")
+            continue
+        else:
+            raise  # re-raise unexpected errors
 
 
 end_time = time.time()
@@ -116,6 +125,8 @@ print(
 )
 # print(f"Mean Effective R: {effective_r}, std: {effective_r_std}")
 print(f"Mean NLL: {mean_nll}, std_nll: {std_nll} ")
+
+
 
 # Total runtime for 10 runs: 64300.72 seconds
 # Mean Missclassication: 0.1433561795268627, Standard Deviation of Missclassication: 0.004530178545165831
