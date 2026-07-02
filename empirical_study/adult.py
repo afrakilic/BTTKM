@@ -127,8 +127,6 @@ print(
 print(f"Mean NLL: {mean_nll}, std_nll: {std_nll} ")
 
 
-
-# Total runtime for 10 runs: 64300.72 seconds
-# Mean Missclassication: 0.1433561795268627, Standard Deviation of Missclassication: 0.004530178545165831
-# Mean Effective R: 6.3, std: 0.45825756949558405
-# Mean NLL: 0.3359441836595124, std_nll: 0.010410498181907212 
+# Total runtime for 10 runs: 65695.97 seconds
+# Mean Missclassication: 0.14691576387353528, Standard Deviation of Missclassication: 0.0051016754619767745
+# Mean NLL: 0.7861283469321758, std_nll: 0.010856199541350208 

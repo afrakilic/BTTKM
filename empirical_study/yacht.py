@@ -8,6 +8,9 @@ import os, sys
 sys.path.append(os.getcwd())
 from config import *  # Import everything from config.py
 from functions.BTTKM import bttkm
+from functions.utils import (plot_precision_vs_norms,
+                             plot_predictive_bounds)
+
 
 
 # # Load the dataset
@@ -25,7 +28,7 @@ y = df[:, 6].reshape(-1, 1)  # target
 
 # hyper-parameters
 input_dimension = 20
-max_rank = 5
+max_rank = 10
 
 a, b = 1e+2, 1e-1
 c, d = 1e+0, 1e-1
@@ -108,11 +111,13 @@ print(
     f"Mean NLL : {np.mean(nll_values)}, Standard Deviation of NLL: {np.std(nll_values)}"
 )
 
+plot_predictive_bounds(y_test, prediction_mean_unscaled, prediction_std_unscaled)
+plot_precision_vs_norms(W_D, lambdas, deltas)
+
 # REPORTED
 # input_dimension = 20
 # max_rank = 5
-# Total runtime for 10 runs: 339.75 seconds
-# Mean RMSE: 0.42665511052796123, Standard Deviation of RMSE: 0.10270645678585054
-# Mean NLL : 0.6010976983396915, Standard Deviation of NLL: 0.2395664597309213
-
+# Total runtime for 10 runs: 303.02 seconds
+# Mean RMSE: 0.4266551128938624, Standard Deviation of RMSE: 0.10270645854717778
+# Mean NLL : 0.6018594362768421, Standard Deviation of NLL: 0.24021758832158452
 

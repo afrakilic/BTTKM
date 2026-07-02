@@ -8,6 +8,8 @@ import os, sys
 sys.path.append(os.getcwd())
 from config import *  # Import everything from config.py
 from functions.BTTKM import bttkm
+from functions.utils import (plot_precision_vs_norms,
+                             plot_predictive_bounds)
 
 
 # Load the dataset
@@ -28,7 +30,7 @@ input_dimension = 20
 max_rank = 5
 
 a, b = 1e+2, 1e-1
-c, d = 1e-1, 1e-1
+c, d = 1e+0, 1e-1
 g, h = 1e-1, 1e-1
 
 
@@ -37,7 +39,7 @@ rmse_values = []
 nll_values = []
 
 start_time = time.time()
-for i in range(10):
+for i in range(1):
     # Split the data
     np.random.seed(i)
     indices = np.random.permutation(len(X))
@@ -57,7 +59,7 @@ for i in range(10):
 
     # train the model
     model =bttkm(X_train.shape[1])
-    W_D = model.train(
+    W_D, lambdas, deltas, tau = model.train(
         features=X_train,
         target=y_train,
         input_dimension=input_dimension,
@@ -73,7 +75,7 @@ for i in range(10):
         lambda_update=True,
         delta_update=True,
         plot_results=False,
-        prune_rank=False,
+        prune_rank=True
     )
 
 # Predict (mse is returned by the predict function)
@@ -108,6 +110,9 @@ print(
     f"Mean NLL : {np.mean(nll_values)}, Standard Deviation of NLL: {np.std(nll_values)}"
 )
 
+plot_predictive_bounds(y_test, prediction_mean_unscaled, prediction_std_unscaled)
+plot_precision_vs_norms(W_D, lambdas, deltas)
+
 # REPORTED
 # input_dimension = 20
 # # max_rank = 5
@@ -115,3 +120,6 @@ print(
 # Mean RMSE: 0.5604888166800447, Standard Deviation of RMSE: 0.07028488756177535
 # Mean NLL : 0.8682921537022861, Standard Deviation of NLL: 0.15562445806885053
 # ############################################################
+
+
+

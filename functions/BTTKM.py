@@ -65,7 +65,7 @@ class bttkm:
         rank_tol: int = 1e-1,  # this is threshold to keep the certain rank (i.e. columns in factor matrices)in terms of explained variance
         delta_update: bool = True,
         precision_update: bool = True,
-        lower_bound_tol: int = 1e-4,
+        lower_bound_tol: int = 1e-5,
         plot_results: bool = True,
         classification: bool = False,
     ) -> None:
@@ -120,18 +120,13 @@ class bttkm:
             H_right_env = [None] * (D + 1)
             G_right_env[D] = np.ones((N, 1))
             H_right_env[D] = np.ones((N, 1))
+
             for k in range(D - 1, -1, -1):
                 G_right_env[k] = compute_G_right([Phi[k]], [W_D[k]], N, G0=G_right_env[k + 1])
                 H_right_env[k] = compute_H_right([Phi[k]], [W_D[k]], [Sigma[k]], N, H0=H_right_env[k + 1])  # G0 → H0
-            for d in range(D):
-                
-                #     #tensor core update 
-                # G_left = compute_G_left(Phi[:d], W_D[:d], N)
-                # G_right = compute_G_right(Phi[d+1:], W_D[d+1:], N) 
-                # H_left = compute_H_left(Phi[:d], W_D[:d], Sigma[:d], N)
-                # H_right = compute_H_right(Phi[d+1:], W_D[d+1:], Sigma[d+1:],N)
-                # Gd_1 = khatri_rao_rows(khatri_rao_rows(G_right, Phi[d]), G_left)
 
+            for d in range(D):
+            
                 G_left_curr  = G_left_env[d]
                 G_right_curr = G_right_env[d + 1]
                 H_left_curr  = H_left_env[d]
@@ -144,13 +139,9 @@ class bttkm:
                                                 M_d=W_D[d].shape[1],
                                                 R_next=W_D[d].shape[2])
             
-                # Sigma[d] = np.linalg.pinv(tau * ggT + np.kron(np.kron(lambdas[d+1]* np.eye(Rs[d+1]), deltas[d]*np.eye(Ms[d])), lambdas[d]*np.eye(Rs[d])))
-
                 kron_term = np.kron(np.kron(lambdas[d+1] * np.eye(Rs[d+1]),
                              deltas[d]    * np.eye(Ms[d])),
                              lambdas[d]   * np.eye(Rs[d]))
-
-                # kron_term = np.clip(kron_term, 1e-4, 1e4)
 
                 A = tau * ggT + kron_term
 
@@ -229,13 +220,15 @@ class bttkm:
 
             W_D_mode1 = tt_core_unfolding(W_D, mode=1)
             W_D_mode3 = tt_core_unfolding(W_D, mode=3)
+            is_last_iter = (it == max_iter - 1) or (abs(LBRelChan) < lower_bound_tol and it > 5)
 
-            if it > 0 and it % 5 == 0 and prune_rank:
+
+            if it > 0 and it % 10 == 0 and prune_rank and not is_last_iter:
                 for d in range(1, D):
                     stack = np.hstack((W_D_mode3[d-1], W_D_mode1[d]))
                     comPower = np.diag(stack @ stack.T)
                     var_explained = comPower / np.sum(comPower) * 100
-                    keep_R = var_explained >= 1e-2
+                    keep_R = var_explained >= 1e-1
 
                     if np.all(keep_R):
                         continue
