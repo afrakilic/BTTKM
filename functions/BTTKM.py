@@ -228,7 +228,7 @@ class bttkm:
                     stack = np.hstack((W_D_mode3[d-1], W_D_mode1[d]))
                     comPower = np.diag(stack @ stack.T)
                     var_explained = comPower / np.sum(comPower) * 100
-                    keep_R = var_explained >= 1e-1
+                    keep_R = var_explained >= 1e-5
 
                     if np.all(keep_R):
                         continue

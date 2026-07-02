@@ -3,13 +3,11 @@ import os, sys
 sys.path.append(os.getcwd())
 from config import *  # Import everything from config.py
 from functions.TT_helpers import (generate_tt_cores, 
-                        init_sigmas,
                         compute_G_left, 
-                        pure_power_features_TT,
-                        tt_core_unfolding)
+                        pure_power_features_TT)
 from functions.BTTKM import bttkm
 
-D = 3
+D = 2
 I_true = 3
 R_true= 3
 
@@ -29,7 +27,7 @@ I_init= 10
 R_init =10
 
 a, b = 1e+2, 1e-1
-c, d = 1e+0, 1e-1
+c, d = 1e-1, 1e-1
 g, h = 1e-1, 1e-1
 
 # Loop 10 times to run the training and evaluation
@@ -54,7 +52,7 @@ for i in range(1):
         lambda_update=True,
         delta_update=True,
         plot_results=True,
-        prune_rank=False,
+        prune_rank=False
     )
 
     # Predict (mse is returned by the predict function)

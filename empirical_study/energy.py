@@ -30,7 +30,7 @@ input_dimension = 20
 max_rank = 5
 
 a, b = 1e+2, 1e-1
-c, d = 1e+0, 1e-1
+c, d = 1e-1, 1e-1
 g, h = 1e-1, 1e-1
 
 
@@ -39,7 +39,7 @@ rmse_values = []
 nll_values = []
 
 start_time = time.time()
-for i in range(1):
+for i in range(10):
     # Split the data
     np.random.seed(i)
     indices = np.random.permutation(len(X))
@@ -75,7 +75,7 @@ for i in range(1):
         lambda_update=True,
         delta_update=True,
         plot_results=False,
-        prune_rank=True
+        prune_rank=True,
     )
 
 # Predict (mse is returned by the predict function)

@@ -28,11 +28,11 @@ y = df[:, 6].reshape(-1, 1)  # target
 
 # hyper-parameters
 input_dimension = 20
-max_rank = 10
+max_rank = 5
 
 a, b = 1e+2, 1e-1
 c, d = 1e+0, 1e-1
-g, h = 1e+0, 1e-1
+g, h = 1e-1, 1e-1
 
 R_effective = []
 rmse_values = []
@@ -76,7 +76,7 @@ for i in range(10):
         lambda_update=True,
         delta_update=True,
         plot_results=False,
-        prune_rank=False
+        prune_rank=True
     )
 
     # Predict (mse is returned by the predict function)
@@ -117,7 +117,6 @@ plot_precision_vs_norms(W_D, lambdas, deltas)
 # REPORTED
 # input_dimension = 20
 # max_rank = 5
-# Total runtime for 10 runs: 303.02 seconds
-# Mean RMSE: 0.4266551128938624, Standard Deviation of RMSE: 0.10270645854717778
-# Mean NLL : 0.6018594362768421, Standard Deviation of NLL: 0.24021758832158452
-
+# Total runtime for 10 runs: 166.47 seconds
+# Mean RMSE: 0.4252301999923775, Standard Deviation of RMSE: 0.10111941000990426
+# Mean NLL : 0.598037602197313, Standard Deviation of NLL: 0.23570740006204796

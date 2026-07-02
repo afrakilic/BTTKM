@@ -8,6 +8,8 @@ import os, sys
 sys.path.append(os.getcwd())
 from config import *  # Import everything from config.py
 from functions.BTTKM import bttkm
+from functions.utils import (plot_predictive_bounds,
+                             plot_precision_vs_norms)
 
 
 df = pd.read_csv("data/airfoil.csv", header=None)
@@ -54,7 +56,7 @@ for i in range(10):
 
     # train the model
     model =bttkm(X_train.shape[1])
-    W_D = model.train(
+    W_D, lambdas, deltas, tau = model.train(
         features=X_train,
         target=y_train,
         input_dimension=input_dimension,
@@ -70,7 +72,7 @@ for i in range(10):
         lambda_update=True,
         delta_update=True,
         plot_results=False,
-        prune_rank=False,
+        prune_rank=True
     )
 
  # Predict (mse is returned by the predict function)
@@ -105,10 +107,13 @@ print(
     f"Mean NLL : {np.mean(nll_values)}, Standard Deviation of NLL: {np.std(nll_values)}"
 )
 
+plot_predictive_bounds(y_test, prediction_mean_unscaled, prediction_std_unscaled)
+plot_precision_vs_norms(W_D, lambdas, deltas)
+
 # REPORTED
 # input_dimension = 20
 # # max_rank = 5
-# Total runtime for 10 runs: 522.05 seconds
+# Total runtime for 10 runs: 372.09 seconds
 # Mean RMSE: 1.4498221720156645, Standard Deviation of RMSE: 0.17059545678439525
 # Mean NLL : 1.9000932484699633, Standard Deviation of NLL: 0.22290562127682517
 # ############################################################
