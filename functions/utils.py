@@ -220,7 +220,8 @@ def plot_precision_vs_norms(W_D, lambdas, deltas):
 
         ax.set_ylim(0, norm1_max)
         ax2.set_ylim(lam_min, lam_max)
-        ax.set_xlim(-0.5, len(x) - 0.5)
+        ax.set_xticks(x)
+        ax.set_xticklabels([str(i) for i in x]) 
         ax.set_title(rf"$\lambda_{d}$", pad=4)
         ax.set_xlabel("Rank index")
 
@@ -272,7 +273,9 @@ def plot_precision_vs_norms(W_D, lambdas, deltas):
 
         ax.set_ylim(0, norm2_max)
         ax2.set_ylim(delta_min, delta_max)
-        ax.set_xlim(-0.5, len(x) - 0.5)
+        # ax.set_xlim(-0.5, len(x) - 0.5)
+        ax.set_xticks(x)
+        ax.set_xticklabels([str(i) for i in x]) 
         ax.set_title(rf"$\delta_{d}$", pad=4)
         ax.set_xlabel("Feature index")
 
