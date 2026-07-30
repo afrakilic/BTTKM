@@ -205,7 +205,7 @@ class bttkm:
             YY = Y.T @ Y
             YG = -2 * np.dot(Y.T, y_hat)
             GG = np.sum(compute_H_left(Phi, W_D, Sigma, N), axis=0)
-            err = float(YY + YG + GG)
+            err = float(np.sum(YY + YG + GG))
 
             if it > 5 and  precision_update:
                 a_N = a0 + (N / 2)
@@ -451,22 +451,20 @@ class bttkm:
                 GR_env[k] = compute_G_right([Phi[k]], [self.W_D[k]], N, G0=GR_env[k + 1])
 
             GL_env = np.ones((N, 1))
-            sum_matrix = np.zeros((N, N))
+            diag_sum = np.zeros(N)
 
             for d in range(D):
-                G_left  = GL_env          # (N, Rs[d])
-                G_right = GR_env[d + 1]  # (N, Rs[d+1])
+                G_left  = GL_env
+                G_right = GR_env[d + 1]
+                x_d = khatri_rao_rows(khatri_rao_rows(G_right, Phi[d]), G_left)  # (N, k)
 
-                x_d = khatri_rao_rows(khatri_rao_rows(G_right, Phi[d]), G_left)  # (N, Rs[d]*Ms[d]*Rs[d+1])
-
-                # x_d @ V[d] @ x_d.T contributes the posterior variance for core d
-                sum_matrix += x_d @ self.V[d] @ x_d.T  # (N, N)
+                xV = x_d @ self.V[d]                    # (N, k) -- O(N*k^2)
+                diag_sum += np.sum(xV * x_d, axis=1)     # (N,)   -- no (N,N) array
 
                 GL_env = compute_G_left([Phi[d]], [self.W_D[d]], N, G0=GL_env)
 
-            # Student-t predictive variance 
-            S = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (sum_matrix / (D * I * (R**2))))
-            std_dev = np.sqrt(np.diag(S))
+            S_diag = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (diag_sum / (D * I * (R**2))))
+            std_dev = np.sqrt(S_diag)
 
             if true_values is not None:
                 if classification:

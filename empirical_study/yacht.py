@@ -117,6 +117,6 @@ plot_precision_vs_norms(W_D, lambdas, deltas)
 # REPORTED
 # input_dimension = 20
 # max_rank = 5
-# Total runtime for 10 runs: 166.47 seconds
-# Mean RMSE: 0.4252301999923775, Standard Deviation of RMSE: 0.10111941000990426
-# Mean NLL : 0.598037602197313, Standard Deviation of NLL: 0.23570740006204796
+# Total runtime for 10 runs: 57.83 seconds
+# Mean RMSE: 0.4252301992395894, Standard Deviation of RMSE: 0.10111940590521762
+# Mean NLL : 0.598037598316814, Standard Deviation of NLL: 0.2357073900504915

@@ -254,7 +254,63 @@ def compute_G_right(Phis, Ws, N, G0=None):
     return G
 
 
-def compute_H_left(Phis, Ws, Sigmas, N, H0=None):
+# def compute_H_left(Phis, Ws, Sigmas, N, H0=None):
+#     if (Phis is None or len(Phis) == 0) or (Ws is None or len(Ws) == 0) or (Sigmas is None or len(Sigmas) == 0):
+#         return H0 if H0 is not None else np.ones((N, 1))
+
+#     N_ = N if N is not None else Phis[0].shape[0]
+#     H = H0 if H0 is not None else np.ones((N_, 1))
+#     Ws_mat = tt_core_unfolding(Ws, mode=3)
+
+#     for k in range(len(Phis)):
+#         Phi2 = khatri_rao_rows(Phis[k], Phis[k])
+#         R, M, Rn = Ws[k].shape
+#         H = khatri_rao_rows(Phi2, H) @ Ew_kronW_left(Ws_mat[k], Sigmas[k], R=R, M=M, Rn=Rn)
+
+#     return H
+
+
+# def compute_H_right(Phis, Ws, Sigmas, N, H0=None):
+#     if (Phis is None or len(Phis) == 0) or (Ws is None or len(Ws) == 0) or (Sigmas is None or len(Sigmas) == 0):
+#         return H0 if H0 is not None else np.ones((N, 1))
+
+#     N_ = N if N is not None else Phis[0].shape[0]
+#     H = H0 if H0 is not None else np.ones((N_, 1))
+#     Ws_mat = tt_core_unfolding(Ws, mode=1)
+#     Ws_r = Ws[::-1]
+#     Ph_r = Phis[::-1]
+#     Wm_r = Ws_mat[::-1]
+#     Sg_r = Sigmas[::-1]
+
+#     for k in range(len(Ph_r)):
+#         Phi2 = khatri_rao_rows(Ph_r[k], Ph_r[k])
+#         R, M, Rn = Ws_r[k].shape
+#         H = khatri_rao_rows(Phi2, H) @ Ew_kronW_right(Wm_r[k], Sg_r[k], R=R, M=M, Rn=Rn)
+
+#     return H
+
+def _chunk_size_for(num_cols, N, target_elems=5_000_000):
+    """
+    Pick a row-chunk size so that a (chunk, num_cols) float64 array stays
+    around `target_elems` entries (default ~5M entries, ~40MB).
+    """
+    if num_cols <= 0:
+        return N
+    chunk = max(1, target_elems // num_cols)
+    return min(N, chunk)
+
+def compute_H_left(Phis, Ws, Sigmas, N, H0=None, target_elems=5_000_000):
+    """
+    Left-to-right second-moment contraction, one Phi per core (Phis[k]).
+
+    Unlike the shared-Phi version, Phi2 = khatri_rao_rows(Phis[k], Phis[k])
+    genuinely differs per core, so it can't be cached once across the whole
+    run -- it's recomputed each k, same as before. What's still avoidable
+    is materializing khatri_rao_rows(Phi2, H) (a dense (N, A*B) array)
+    before the matmul: computed here as two smaller matmuls instead (same
+    trick as the shared-Phi compute_H_left/right), with the same row
+    chunking for memory safety on large N.
+    """
     if (Phis is None or len(Phis) == 0) or (Ws is None or len(Ws) == 0) or (Sigmas is None or len(Sigmas) == 0):
         return H0 if H0 is not None else np.ones((N, 1))
 
@@ -263,14 +319,37 @@ def compute_H_left(Phis, Ws, Sigmas, N, H0=None):
     Ws_mat = tt_core_unfolding(Ws, mode=3)
 
     for k in range(len(Phis)):
-        Phi2 = khatri_rao_rows(Phis[k], Phis[k])
+        Phi2 = khatri_rao_rows(Phis[k], Phis[k])   # (N, I*I) -- differs per core, must recompute
         R, M, Rn = Ws[k].shape
-        H = khatri_rao_rows(Phi2, H) @ Ew_kronW_left(Ws_mat[k], Sigmas[k], R=R, M=M, Rn=Rn)
+        Ek = Ew_kronW_left(Ws_mat[k], Sigmas[k], R=R, M=M, Rn=Rn)   # (I*I*R*R, Rn*Rn)
+
+        A = Phi2.shape[1]
+        B = H.shape[1]
+        C = Ek.shape[1]
+        Ek2 = Ek.reshape(A, B * C)
+
+        num_cols = A * B
+        chunk = _chunk_size_for(num_cols, N_, target_elems=target_elems)
+
+        if chunk >= N_:
+            tmp = (Phi2 @ Ek2).reshape(N_, B, C)
+            H = np.matmul(H[:, None, :], tmp)[:, 0, :]
+        else:
+            H_new = np.empty((N_, C))
+            for start in range(0, N_, chunk):
+                end = min(start + chunk, N_)
+                tmp = (Phi2[start:end] @ Ek2).reshape(end - start, B, C)
+                H_new[start:end] = np.matmul(H[start:end][:, None, :], tmp)[:, 0, :]
+            H = H_new
 
     return H
 
 
-def compute_H_right(Phis, Ws, Sigmas, N, H0=None):
+def compute_H_right(Phis, Ws, Sigmas, N, H0=None, target_elems=5_000_000):
+    """
+    Right-to-left second-moment contraction, one Phi per core (Phis[k]).
+    Same acceleration as compute_H_left -- see its docstring.
+    """
     if (Phis is None or len(Phis) == 0) or (Ws is None or len(Ws) == 0) or (Sigmas is None or len(Sigmas) == 0):
         return H0 if H0 is not None else np.ones((N, 1))
 
@@ -285,11 +364,28 @@ def compute_H_right(Phis, Ws, Sigmas, N, H0=None):
     for k in range(len(Ph_r)):
         Phi2 = khatri_rao_rows(Ph_r[k], Ph_r[k])
         R, M, Rn = Ws_r[k].shape
-        H = khatri_rao_rows(Phi2, H) @ Ew_kronW_right(Wm_r[k], Sg_r[k], R=R, M=M, Rn=Rn)
+        Ek = Ew_kronW_right(Wm_r[k], Sg_r[k], R=R, M=M, Rn=Rn)   # (I*I*Rn*Rn, R*R)
+
+        A = Phi2.shape[1]
+        B = H.shape[1]
+        C = Ek.shape[1]
+        Ek2 = Ek.reshape(A, B * C)
+
+        num_cols = A * B
+        chunk = _chunk_size_for(num_cols, N_, target_elems=target_elems)
+
+        if chunk >= N_:
+            tmp = (Phi2 @ Ek2).reshape(N_, B, C)
+            H = np.matmul(H[:, None, :], tmp)[:, 0, :]
+        else:
+            H_new = np.empty((N_, C))
+            for start in range(0, N_, chunk):
+                end = min(start + chunk, N_)
+                tmp = (Phi2[start:end] @ Ek2).reshape(end - start, B, C)
+                H_new[start:end] = np.matmul(H[start:end][:, None, :], tmp)[:, 0, :]
+            H = H_new
 
     return H
-
-
 
 def legendre_basis(x: np.ndarray, I: int, normalize: bool = True) -> list:
     """
