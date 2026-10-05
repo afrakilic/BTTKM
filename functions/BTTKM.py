@@ -26,9 +26,7 @@ from functions.TT_helpers import (generate_tt_cores,
                         khatri_rao_rows, 
                         reshape_permute_ggT_to_sigma,
                         pure_power_features_TT,
-                        tt_core_unfolding, 
-                        initialize_tt_cores,
-                        legendre_basis)
+                        tt_core_unfolding)
 from functions.utils import (safelog)
 
 
