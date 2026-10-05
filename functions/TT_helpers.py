@@ -253,42 +253,6 @@ def compute_G_right(Phis, Ws, N, G0=None):
 
     return G
 
-
-# def compute_H_left(Phis, Ws, Sigmas, N, H0=None):
-#     if (Phis is None or len(Phis) == 0) or (Ws is None or len(Ws) == 0) or (Sigmas is None or len(Sigmas) == 0):
-#         return H0 if H0 is not None else np.ones((N, 1))
-
-#     N_ = N if N is not None else Phis[0].shape[0]
-#     H = H0 if H0 is not None else np.ones((N_, 1))
-#     Ws_mat = tt_core_unfolding(Ws, mode=3)
-
-#     for k in range(len(Phis)):
-#         Phi2 = khatri_rao_rows(Phis[k], Phis[k])
-#         R, M, Rn = Ws[k].shape
-#         H = khatri_rao_rows(Phi2, H) @ Ew_kronW_left(Ws_mat[k], Sigmas[k], R=R, M=M, Rn=Rn)
-
-#     return H
-
-
-# def compute_H_right(Phis, Ws, Sigmas, N, H0=None):
-#     if (Phis is None or len(Phis) == 0) or (Ws is None or len(Ws) == 0) or (Sigmas is None or len(Sigmas) == 0):
-#         return H0 if H0 is not None else np.ones((N, 1))
-
-#     N_ = N if N is not None else Phis[0].shape[0]
-#     H = H0 if H0 is not None else np.ones((N_, 1))
-#     Ws_mat = tt_core_unfolding(Ws, mode=1)
-#     Ws_r = Ws[::-1]
-#     Ph_r = Phis[::-1]
-#     Wm_r = Ws_mat[::-1]
-#     Sg_r = Sigmas[::-1]
-
-#     for k in range(len(Ph_r)):
-#         Phi2 = khatri_rao_rows(Ph_r[k], Ph_r[k])
-#         R, M, Rn = Ws_r[k].shape
-#         H = khatri_rao_rows(Phi2, H) @ Ew_kronW_right(Wm_r[k], Sg_r[k], R=R, M=M, Rn=Rn)
-
-#     return H
-
 def _chunk_size_for(num_cols, N, target_elems=5_000_000):
     """
     Pick a row-chunk size so that a (chunk, num_cols) float64 array stays

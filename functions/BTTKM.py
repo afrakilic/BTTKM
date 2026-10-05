@@ -225,21 +225,22 @@ class bttkm:
 
             if it > 0 and it % 10 == 0 and prune_rank and not is_last_iter:
                 for d in range(1, D):
-                    stack = np.hstack((W_D_mode3[d-1], W_D_mode1[d]))
+                   
+                    stack = np.hstack((tt_core_unfolding(W_D[d-1], mode=3)[0],
+                                       tt_core_unfolding(W_D[d], mode=1)[0]))
                     comPower = np.diag(stack @ stack.T)
                     var_explained = comPower / np.sum(comPower) * 100
                     keep_R = var_explained >= 1e-5
+                    if not np.any(keep_R):
+                        keep_R[np.argmax(comPower)] = True
 
                     if np.all(keep_R):
                         continue
-
-                    idx = np.where(keep_R)[0]
-
-                    R_d_old = Rs[d]    
-                    I_prev  = Ms[d-1]
-                    R_prev  = Rs[d-1]
-                    I_d     = Ms[d]
-                    R_next  = Rs[d+1]
+                    
+                    flat_dm1 = np.arange(W_D[d-1].size).reshape(
+                        W_D[d-1].shape, order="F")[:, :, keep_R].ravel(order="F")
+                    flat_d = np.arange(W_D[d].size).reshape(
+                        W_D[d].shape, order="F")[keep_R, :, :].ravel(order="F")
 
                     # trim cores 
                     W_D[d-1] = W_D[d-1][:, :, keep_R]   # mode-3 of core d-1
@@ -254,17 +255,9 @@ class bttkm:
                     d0s[d]     = d0s[d][keep_R]
 
                     # trim Sigma[d-1]
-                    flat_dm1 = np.concatenate([
-                        rb * I_prev * R_d_old + ib * R_d_old + idx
-                        for rb in range(R_prev)
-                        for ib in range(I_prev)
-                    ])
                     Sigma[d-1] = Sigma[d-1][np.ix_(flat_dm1, flat_dm1)]
 
                     # trim Sigma[d]
-                    flat_d = np.concatenate([
-                        np.arange(r * I_d * R_next, (r + 1) * I_d * R_next) for r in idx
-                    ])
                     Sigma[d] = Sigma[d][np.ix_(flat_d, flat_d)]
 
 
