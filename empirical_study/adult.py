@@ -68,7 +68,7 @@ for i in range(10):
             scale_parameter_lambda=d,
             shape_parameter_delta=g,
             scale_parameter_delta=h,
-            max_iter=25,
+            max_iter=50,
             precision_update=True,
             lambda_update=True,
             delta_update=True,
