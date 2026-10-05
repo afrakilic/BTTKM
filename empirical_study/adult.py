@@ -89,7 +89,9 @@ for i in range(10):
         mse_values.append(mse)
 
         # # NLL
-        probs_gt_zero = norm.sf(0, loc=prediction_mean, scale=prediction_std)  # P(y > 0)
+        prediction_mean = prediction_mean.ravel()
+        prediction_std = prediction_std.ravel()
+        probs_gt_zero = norm.sf(0, loc=prediction_mean, scale=prediction_std) 
         y_test_binary = (y_test + 1) // 2
         eps = 1e-15
         y_pred_prob = np.clip(probs_gt_zero, eps, 1 - eps)

@@ -88,7 +88,9 @@ for i in range(10):
     mse_values.append(mse)
 
     # # NLL
-    probs_gt_zero = norm.sf(0, loc=prediction_mean, scale=prediction_std)  # P(y > 0)
+    prediction_mean = prediction_mean.ravel()
+    prediction_std = prediction_std.ravel()
+    probs_gt_zero = norm.sf(0, loc=prediction_mean, scale=prediction_std)  
     y_test_binary = (y_test + 1) // 2
     eps = 1e-15
     y_pred_prob = np.clip(probs_gt_zero, eps, 1 - eps)
@@ -123,6 +125,6 @@ print(f"Mean NLL: {mean_nll}, std_nll: {std_nll} ")
 # input_dimension = 30
 # # max_rank = 3
 
-# Total runtime for 10 runs: 585.86 seconds
+# Total runtime for 10 runs: 554.69 seconds
 # Mean Missclassication: 0.09414316702819955, Standard Deviation of Missclassication: 0.01791919863606366
-# Mean NLL: 1.2391120985504127, std_nll: 0.08400774021217129 
+# Mean NLL: 0.2589007092398113, std_nll: 0.032605498933040586 
