@@ -9,11 +9,15 @@ Usage (from the repo root, where config.py, data/ and functions/ live):
     python experiments.py --no-mc                 # skip Monte Carlo evaluation
 
 Outputs (in results/):
-    per_run_results.csv   one row per (dataset, seed): analytic + MC RMSE, NLL, coverage, runtime
+    per_run_results.csv   one row per (dataset, seed): analytic + MC RMSE, NLL, coverage, runtime,
+                          and the average effective TT rank (avg_eff_rank)
     summary.json          mean/std per dataset (+ hyperparameters)
     raw/<dataset>.npz     last-run predictions, W_D, lambdas, deltas (for plotting)
 
 Tables are built from these files by results.py.
+
+Requires bttkm.train() to return 5 values: (W_D, lambdas, deltas, tau, avg_effective_rank), the
+mean of the D-1 inner bond ranks after pruning (boundary ranks R_1 = R_{D+1} = 1 excluded).
 """
 
 import os, sys, json, argparse
@@ -155,7 +159,7 @@ def run_dataset(name, cfg, plot=False, mc_samples=MC_SAMPLES):
 
         # train
         model = bttkm(X_train.shape[1])
-        W_D, lambdas, deltas, tau = model.train(
+        W_D, lambdas, deltas, tau, avg_eff_rank = model.train(
             features=X_train,
             target=y_train,
             input_dimension=hp["input_dimension"],
@@ -192,9 +196,10 @@ def run_dataset(name, cfg, plot=False, mc_samples=MC_SAMPLES):
         runtime = time.time() - t0   # analytic pipeline only (train + predict + metrics)
 
         row = dict(dataset=name, run=i, rmse=rmse, nll=float(np.mean(nll_pp)),
-                   coverage=coverage, nu=nu_y, runtime_s=runtime)
+                   coverage=coverage, nu=nu_y, runtime_s=runtime,
+                   avg_eff_rank=float(avg_eff_rank))
         msg = (f"[{name}] run {i}: RMSE={rmse:.4f}  NLL={np.mean(nll_pp):.4f}  "
-               f"cov={coverage*100:.1f}%  ({runtime:.1f}s)")
+               f"cov={coverage*100:.1f}%  R_eff={avg_eff_rank:.2f}  ({runtime:.1f}s)")
 
         # Monte Carlo predictive evaluation (same trained model, same test split)
         if mc_samples > 0:
@@ -247,7 +252,8 @@ def main():
             "n_runs": N_RUNS,
             "total_runtime_s": float(d.runtime_s.sum()),
             **{f"{m}_{s}": float(fn(d[m].values))
-               for m in [c for c in ("rmse", "nll", "coverage", "mc_rmse", "mc_nll", "mc_coverage")
+               for m in [c for c in ("rmse", "nll", "coverage", "mc_rmse", "mc_nll", "mc_coverage",
+                                     "avg_eff_rank")
                          if c in d.columns]
                for s, fn in (("mean", np.mean), ("std", np.std))},  # np.std: ddof=0
         }

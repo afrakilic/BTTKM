@@ -58,6 +58,7 @@ def save(df, name, caption, label):
 def main():
     df = pd.read_csv(os.path.join(RESULTS_DIR, "per_run_results.csv"))
     has_mc = "mc_nll" in df.columns
+    has_rank = "avg_eff_rank" in df.columns
     datasets = [d for d in ORDER if d in df.dataset.unique()]
 
     general_rows, uq_rows = [], []
@@ -71,6 +72,8 @@ def main():
         uq["Analytic Cov. (%)"] = ms(g.coverage, 100, 1)
         if has_mc:
             uq["MC Cov. (%)"] = ms(g.mc_coverage, 100, 1)
+        if has_rank:
+            gen["Avg. eff. rank"] = ms(g.avg_eff_rank, dec=2)
         gen["Total runtime (s)"] = f"{g.runtime_s.sum():.2f}"
         if has_mc:
             gen["MC runtime (s)"] = f"{g.mc_runtime_s.sum():.2f}"
@@ -93,6 +96,9 @@ def main():
     print(bar)
     tot = df.runtime_s.sum() + (df.mc_runtime_s.sum() if has_mc else 0)
     print(f"\nTotal runtime across all datasets: {tot:.2f} seconds")
+
+    save(general, "general", "General performance of BTTKM across datasets.", "tab:general")
+    save(uq, "uq", "Uncertainty quantification: NLL and 95\\% coverage, analytic vs. MC.", "tab:uq")
     print(f"Tables saved to {TABLE_DIR}/")
 
 
@@ -103,18 +109,18 @@ if __name__ == "__main__":
 # ====================================================================================================
 # GENERAL PERFORMANCE - SUMMARY ACROSS DATASETS (BTTKM)
 # ====================================================================================================
-#  Dataset  N runs          RMSE       MC RMSE Total runtime (s) MC runtime (s)
-#  Airfoil      10 1.561 ± 0.144 1.562 ± 0.140             68.03           2.85
-#   Energy      10 0.575 ± 0.090 0.576 ± 0.090            125.27           4.84
-#    Yacht      10 0.427 ± 0.104 0.428 ± 0.105             63.79           2.07
-# Concrete      10 5.087 ± 0.590 5.088 ± 0.594            111.20           4.25
+#  Dataset  N runs          RMSE       MC RMSE Avg. eff. rank Total runtime (s) MC runtime (s)
+#  Airfoil      10 1.565 ± 0.146 1.566 ± 0.145    4.88 ± 0.12             60.16           8.14
+#   Energy      10 0.575 ± 0.090 0.576 ± 0.091    5.00 ± 0.00            122.08          11.99
+#    Yacht      10 0.429 ± 0.105 0.428 ± 0.104    4.96 ± 0.08             49.55           4.64
+# Concrete      10 5.119 ± 0.612 5.121 ± 0.618    4.81 ± 0.11             87.55          12.26
 
 # ====================================================================================================
 # UNCERTAINTY QUANTIFICATION - NLL AND 95% COVERAGE (ANALYTIC vs. MC) - SUMMARY ACROSS DATASETS
 # ====================================================================================================
 #  Dataset  N runs  Analytic NLL        MC NLL Analytic Cov. (%) MC Cov. (%)
-#  Airfoil      10 1.897 ± 0.122 1.836 ± 0.100        92.1 ± 1.5  94.7 ± 1.2
-#   Energy      10 0.901 ± 0.203 0.837 ± 0.107        91.3 ± 3.8  95.8 ± 2.2
-#    Yacht      10 0.597 ± 0.236 0.546 ± 0.074        95.8 ± 3.2  99.0 ± 1.5
-# Concrete      10 3.103 ± 0.185 3.047 ± 0.123        90.6 ± 2.6  94.0 ± 3.0
+#  Airfoil      10 1.899 ± 0.123 1.838 ± 0.097        92.1 ± 1.3  94.9 ± 1.1
+#   Energy      10 0.901 ± 0.203 0.836 ± 0.107        91.3 ± 3.8  96.4 ± 2.0
+#    Yacht      10 0.604 ± 0.235 0.557 ± 0.070        95.8 ± 2.9  99.0 ± 1.5
+# Concrete      10 3.105 ± 0.185 3.052 ± 0.127        91.0 ± 2.8  94.1 ± 2.8
 # ====================================================================================================

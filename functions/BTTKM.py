@@ -63,7 +63,7 @@ class bttkm:
         rank_tol: int = 1e-1,  # this is threshold to keep the certain rank (i.e. columns in factor matrices)in terms of explained variance
         delta_update: bool = True,
         precision_update: bool = True,
-        lower_bound_tol: int = 1e-5,
+        lower_bound_tol: int = 1e-4,
         plot_results: bool = True,
         classification: bool = False,
     ) -> None:
@@ -340,7 +340,8 @@ class bttkm:
 
         self.LB = LB[:it+1]
         self.Fit_history = Fit_history
-
+        self.effective_ranks = [W_D[d].shape[0] for d in range(1, D)]
+        self.avg_effective_rank = float(np.mean(self.effective_ranks)) if self.effective_ranks else float("nan")
         if plot_results:
         
             self.LB = LB[:it+1]
@@ -391,7 +392,7 @@ class bttkm:
         self.b = b_N
         self.N = N 
 
-        return W_D, lambdas, deltas, tau
+        return W_D, lambdas, deltas, tau,  self.avg_effective_rank
 
     def predict(
             self,

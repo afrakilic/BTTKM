@@ -40,7 +40,7 @@ nll_values = []
 
 # Loop 10 times to run the training and evaluation
 start_time = time.time()
-for i in range(10):
+for i in range(1):
     # Split the data
     np.random.seed(i)
     indices = np.random.permutation(len(X))
@@ -56,7 +56,7 @@ for i in range(10):
 
     # train the model
     model = bttkm(X_train.shape[1])
-    W_D = model.train(
+    W_D, lambdas, deltas, tau, avg_eff_rank = model.train(
         features=X_train,
         target=y_train,
         input_dimension=input_dimension,
@@ -75,6 +75,7 @@ for i in range(10):
         prune_rank=True,
         classification=True
     )
+    R_effective.append(avg_eff_rank)
 
     # Predict (mse is returned by the predict function)
     prediction_mean,prediction_std, mse = model.predict(
@@ -90,7 +91,7 @@ for i in range(10):
     # # NLL
     prediction_mean = prediction_mean.ravel()
     prediction_std = prediction_std.ravel()
-    probs_gt_zero = norm.sf(0, loc=prediction_mean, scale=prediction_std)  
+    probs_gt_zero = norm.sf(0, loc=prediction_mean, scale=prediction_std)
     y_test_binary = (y_test + 1) // 2
     eps = 1e-15
     y_pred_prob = np.clip(probs_gt_zero, eps, 1 - eps)
@@ -109,14 +110,14 @@ print(f"Total runtime for 10 runs: {total_runtime_seconds:.2f} seconds")
 
 
 mean_mse, std_mse = np.mean(mse_values), np.std(mse_values)
-# effective_r, effective_r_std = np.mean(R_effective), np.std(R_effective)
+effective_r, effective_r_std = np.mean(R_effective), np.std(R_effective)
 mean_nll, std_nll = np.mean(nll_values), np.std(nll_values)
 
 
 print(
     f"Mean Missclassication: {mean_mse}, Standard Deviation of Missclassication: {std_mse}"
 )
-# print(f"Mean Effective R: {effective_r}, std: {effective_r_std}")
+print(f"Mean Effective R: {effective_r}, std: {effective_r_std}")
 print(f"Mean NLL: {mean_nll}, std_nll: {std_nll} ")
 
 
@@ -127,4 +128,4 @@ print(f"Mean NLL: {mean_nll}, std_nll: {std_nll} ")
 
 # Total runtime for 10 runs: 554.69 seconds
 # Mean Missclassication: 0.09414316702819955, Standard Deviation of Missclassication: 0.01791919863606366
-# Mean NLL: 0.2589007092398113, std_nll: 0.032605498933040586 
+# Mean NLL: 0.2589007092398113, std_nll: 0.032605498933040586
