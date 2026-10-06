@@ -130,6 +130,7 @@ print(f"Mean Effective R: {effective_r}, std: {effective_r_std}")
 print(f"Mean NLL: {mean_nll}, std_nll: {std_nll} ")
 
 
-# Total runtime for 10 runs: 65695.97 seconds
+# Total runtime for 10 runs: 10209.91 seconds
 # Mean Missclassication: 0.14691576387353528, Standard Deviation of Missclassication: 0.0051016754619767745
-# Mean NLL: 0.7861283469321758, std_nll: 0.010856199541350208
+# Mean Effective R: 3.0, std: 0.0
+# Mean NLL: 0.33232763453959085, std_nll: 0.007329710116867951 
