@@ -29,9 +29,9 @@ y = np.where(y > 0, 1, -1)
 input_dimension = 30
 max_rank = 3
 
-a, b = 1e+1, 1e-1
-c, d = 1e+0, 1e-1
-g, h = 1e-1, 1e-1
+a, b = 1e-1, 1e-3
+c, d = 1e-5, 1e-6
+g, h = 1e-6, 1e-6
 
 # Store the MSE results
 mse_values = []
@@ -127,6 +127,6 @@ print(f"Mean NLL: {mean_nll}, std_nll: {std_nll} ")
 # # max_rank = 3
 
 # Total runtime for 10 runs: 486.89 seconds
-# Mean Missclassication: 0.09414316702819957, Standard Deviation of Missclassication: 0.016582659308994694
-# Mean Effective R: 2.991071428571429, std: 0.011978935593748831
-# Mean NLL: 0.259951875127276, std_nll: 0.03279748368849409 
+# Mean Missclassication: 0.0945770065075922, Standard Deviation of Missclassication: 0.01522152259683197
+# Mean Effective R: 2.7071428571428577, std: 0.17168879059602735
+# Mean NLL: 0.2576720536462915, std_nll: 0.03257034826361812 

@@ -349,43 +349,27 @@ class bttkm:
             self.LB_terms = {k: v[:it+1] for k, v in LB_terms.items()}
 
             if plot_results:
-                labels = {
-                    "temp1": r"$-\frac{\tau}{2}\|y - \hat{y}\|^2$" + "\n(likelihood)",
-                    "temp2": r"$-\frac{1}{2}\mathrm{tr}(\Lambda W W^\top)$" + "\n(prior on W)",
-                    "temp3": r"$\frac{1}{2}\log|\Sigma|$" + "\n(entropy of W)",
-                    "temp4": r"$\sum c_N(1 - \log d_N)$" + "\n(lambda term)",
-                    "temp5": r"$\sum g_N(1 - \log h_N)$" + "\n(delta term)",
-                    "temp6": r"$a_N(1 - \log b_N)$" + "\n(tau term)",
+                style = {
+                    "font.family": "serif",
+                    "mathtext.fontset": "cm",
+                    "font.size": 9,
+                    "axes.labelsize": 9,
+                    "xtick.labelsize": 8,
+                    "ytick.labelsize": 8,
+                    "axes.linewidth": 0.6,
                 }
-                colors = ["steelblue", "darkorange", "forestgreen", "orchid", "tomato", "goldenrod"]
-
-                fig, axes = plt.subplots(2, 4, figsize=(18, 7))
-                axes = axes.flatten()
-
-                for i, (key, color) in enumerate(zip(LB_terms.keys(), colors)):
-                    axes[i].plot(self.LB_terms[key], color=color, linewidth=2)
-                    axes[i].set_title(labels[key], fontsize=9)
-                    axes[i].set_xlabel("Iteration", fontsize=8)
-                    axes[i].grid(True, alpha=0.3)
-
-                # 7th panel: total ELBO
-                axes[6].plot(self.LB, color="black", linewidth=2)
-                axes[6].set_title("Total ELBO", fontsize=9)
-                axes[6].set_xlabel("Iteration", fontsize=8)
-                axes[6].grid(True, alpha=0.3)
-
-                # 8th panel: R² fit
-                axes[7].plot(Fit_history, color="teal", linewidth=2)
-                axes[7].axhline(y=1.0, color="gray", linestyle="--", alpha=0.5)
-                axes[7].set_title("Training Fit (R²)", fontsize=9)
-                axes[7].set_xlabel("Iteration", fontsize=8)
-                axes[7].grid(True, alpha=0.3)
-
-                plt.suptitle("ELBO Terms per Iteration", fontsize=12, fontweight="bold")
-                plt.tight_layout()
-                plt.savefig("elbo_terms.png", dpi=150)
-                plt.show()
-        
+                with plt.rc_context(style):
+                    fig, ax = plt.subplots(figsize=(3.4, 2.4))
+                    ax.plot(np.arange(1, len(self.LB) + 1), self.LB,
+                            color="#222222", linewidth=1.0, marker="o", markersize=2)
+                    ax.set_xlabel("Iteration")
+                    ax.set_ylabel("Lower bound")
+                    ax.spines["top"].set_visible(False)
+                    ax.spines["right"].set_visible(False)
+                    plt.tight_layout()
+                    plt.savefig("elbo.png", dpi=300)
+                    plt.savefig("elbo.pdf")
+                    plt.show()
         self.W_D = W_D
         self.V = Sigma
         self.a = a_N
@@ -425,7 +409,7 @@ class bttkm:
                 )
 
             I = input_dimension
-            R = rank
+            R = self.avg_effective_rank
             X = features
             N = X.shape[0]
             D = X.shape[1]

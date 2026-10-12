@@ -33,14 +33,15 @@ from scipy import stats
 # Dataset configurations (hyperparameters taken from the original scripts)
 # a,b: tau (shape, scale) | c,d: lambda (shape, scale) | g,h: delta (shape, scale)
 # --------------------------------------------------------------------------
-COMMON = dict(input_dimension=20, max_rank=5, max_iter=50, g=1e-1, h=1e-1)
+COMMON = dict(input_dimension=20, max_rank=5, max_iter=50, g=1e-6, h=1e-6)
 
 DATASETS = {
-    "airfoil":  dict(path="data/airfoil.csv",  n_features=5, a=1e1, b=1e-1, c=1e0,  d=1e-1),
-    "energy":   dict(path="data/energy.csv",   n_features=9, a=1e2, b=1e-1, c=1e0,  d=1e-1),
-    "yacht":    dict(path="data/yacht.csv",    n_features=6, a=1e2, b=1e-1, c=1e0,  d=1e-1),
-    "concrete": dict(path="data/concrete.csv", n_features=8, a=1e1, b=1e-1, c=1e0,  d=1e-1),
+    "airfoil":  dict(path="data/airfoil.csv",  n_features=5, a=1e-1, b=1e-3, c=1e-5,  d=1e-6),
+    "energy":   dict(path="data/energy.csv",   n_features=9, a=1e0, b=1e-3, c=1e-5,  d=1e-6),
+    "yacht":    dict(path="data/yacht.csv",    n_features=6, a=1e+1, b=1e-3, c=1e-5,  d=1e-6),
+    "concrete": dict(path="data/concrete.csv", n_features=8, a=1e-1, b=1e-3, c=1e-5,  d=1e-6)
 }
+
 
 N_RUNS = 10
 TRAIN_FRAC = 0.90
