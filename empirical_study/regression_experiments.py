@@ -1,23 +1,17 @@
 """
-Runs all BTTKM experiments (airfoil, energy, yacht, concrete) and saves the results.
+Runs the BTTKM experiments (airfoil, energy, yacht, concrete).
 
-Usage (from the repo root, where config.py, data/ and functions/ live):
-    python experiments.py                         # all datasets
-    python experiments.py --datasets yacht concrete
-    python experiments.py --plot                  # also show the diagnostic plots
-    python experiments.py --mc-samples 2000       # MC samples per test set (default 1000)
-    python experiments.py --no-mc                 # skip Monte Carlo evaluation
+Usage (from the repo root):
+    python experiments.py [--datasets yacht concrete] [--plot] [--mc-samples 2000] [--no-mc]
 
-Outputs (in results/):
-    per_run_results.csv   one row per (dataset, seed): analytic + MC RMSE, NLL, coverage, runtime,
-                          and the average effective TT rank (avg_eff_rank)
-    summary.json          mean/std per dataset (+ hyperparameters)
-    raw/<dataset>.npz     last-run predictions, W_D, lambdas, deltas (for plotting)
+Outputs (results/):
+    per_run_results.csv   per-run RMSE, NLL, coverage (analytic + MC), runtime, avg_eff_rank
+    summary.json          mean/std per dataset and the hyperparameters
+    raw/<dataset>.npz     predictions, W_D, lambdas, deltas of the last run
 
-Tables are built from these files by results.py.
-
-Requires bttkm.train() to return 5 values: (W_D, lambdas, deltas, tau, avg_effective_rank), the
-mean of the D-1 inner bond ranks after pruning (boundary ranks R_1 = R_{D+1} = 1 excluded).
+Tables are made from these files by results.py.
+bttkm.train() must return (W_D, lambdas, deltas, tau, avg_eff_rank), where avg_eff_rank is the
+mean of the D-1 inner TT ranks after pruning.
 """
 
 import os, sys, json, argparse
@@ -26,7 +20,7 @@ sys.path.append(os.getcwd())
 from config import *  # noqa: F401,F403  (provides np, pd, time, ...)
 from functions.BTTKM import bttkm
 from functions.TT_helpers import compute_G_left, pure_power_features_TT
-from functions.utils import plot_predictive_bounds, plot_precision_vs_norms
+# from functions.utils import plot_predictive_bounds, plot_precision_vs_norms
 from scipy import stats
 
 # --------------------------------------------------------------------------
@@ -38,7 +32,7 @@ COMMON = dict(input_dimension=20, max_rank=5, max_iter=50, g=1e-6, h=1e-6)
 DATASETS = {
     "airfoil":  dict(path="data/airfoil.csv",  n_features=5, a=1e-1, b=1e-3, c=1e-5,  d=1e-6),
     "energy":   dict(path="data/energy.csv",   n_features=9, a=1e0, b=1e-3, c=1e-5,  d=1e-6),
-    "yacht":    dict(path="data/yacht.csv",    n_features=6, a=1e+1, b=1e-3, c=1e-5,  d=1e-6),
+    "yacht":    dict(path="data/yacht.csv",    n_features=6, a=1e0, b=1e-3, c=1e-5,  d=1e-6),
     "concrete": dict(path="data/concrete.csv", n_features=8, a=1e-1, b=1e-3, c=1e-5,  d=1e-6)
 }
 
@@ -134,7 +128,7 @@ def load_dataset(cfg):
     return df[:, :nf], df[:, nf].reshape(-1, 1)
 
 
-def run_dataset(name, cfg, plot=False, mc_samples=MC_SAMPLES):
+def run_dataset(name, cfg, mc_samples=MC_SAMPLES):
     hp = {**COMMON, **cfg}
     X, y = load_dataset(cfg)
     rows = []
@@ -177,6 +171,7 @@ def run_dataset(name, cfg, plot=False, mc_samples=MC_SAMPLES):
             delta_update=True,
             plot_results=False,
             prune_rank=True,
+            rank_tol= 1e-3
         )
 
         # predict
@@ -223,10 +218,6 @@ def run_dataset(name, cfg, plot=False, mc_samples=MC_SAMPLES):
         last = dict(y_test=y_test, pred_mean=pred_mean_u, pred_std=pred_std_u,
                     W_D=np.asarray(W_D, dtype=object), lambdas=np.asarray(lambdas, dtype=object),
                     deltas=np.asarray(deltas, dtype=object), **last_mc)
-
-    if plot:
-        plot_predictive_bounds(last["y_test"], last["pred_mean"], last["pred_std"])
-        plot_precision_vs_norms(W_D, lambdas, deltas)
 
     return rows, last, hp
 

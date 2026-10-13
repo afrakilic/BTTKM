@@ -26,8 +26,8 @@ from functions.TT_helpers import (generate_tt_cores,
                         khatri_rao_rows, 
                         reshape_permute_ggT_to_sigma,
                         pure_power_features_TT,
-                        tt_core_unfolding)
-from functions.utils import (safelog)
+                        tt_core_unfolding,
+                        safelog)
 
 
 
@@ -60,7 +60,7 @@ class bttkm:
         seed: int = 2,
         lambda_update: bool = True,
         prune_rank: bool = False,  # Optional rank pruning
-        rank_tol: int = 1e-1,  # this is threshold to keep the certain rank (i.e. columns in factor matrices)in terms of explained variance
+        rank_tol: int = 1e-5,  # this is threshold to keep the certain rank (i.e. columns in factor matrices)in terms of explained variance
         delta_update: bool = True,
         precision_update: bool = True,
         lower_bound_tol: int = 1e-4,
@@ -92,14 +92,13 @@ class bttkm:
         lambdas0 = [c / d for c, d in zip(c0s, d0s)]; lambdas = [l.copy() for l in lambdas0]
 
 
-       
-        # W_D = initialize_tt_cores(N = N, D=D, I =I, R=R)
+    
         Sigma = init_sigmas(D=D, Ms=Ms, Rs=Rs, N=N)
 
         W_D= generate_tt_cores(D=D, Ms=Ms, Rs=Rs, seed=1)
         Phi= pure_power_features_TT(X, Ms=Ms)
 
-        # Phi = legendre_basis(X, I=I)
+
         pbar = trange(max_iter, desc="Running", leave=True)
         Fit_history = []
         LB = np.zeros(max_iter)  # lowerbound
@@ -160,7 +159,7 @@ class bttkm:
                 H_left_env[d + 1] = compute_H_left([Phi[d]], [W_D[d]], [Sigma[d]], N, H0=H_left_env[d])  # G0 → H0
 
                  # #lambda updates 
-                if it > 5 and lambda_update: 
+                if it > 4 and lambda_update: 
                     if d > 0: 
 
                         Klam1= np.kron(lambdas[d+1]*np.eye(lambdas[d+1].size),deltas[d]*np.eye(deltas[d].size))
@@ -187,7 +186,7 @@ class bttkm:
 
             
                 #delta updates 
-                if it > 5 and delta_update:
+                if it > 4 and delta_update:
                     Kdel = np.kron(lambdas[d+1] * np.eye(lambdas[d+1].size), lambdas[d] * np.eye(lambdas[d].size))
                     Sigma_cored = np.diag(Sigma[d]).reshape(W_D[d].shape, order="F")
                     Sigma2 = tt_core_unfolding(Sigma_cored, mode=2)[0]
@@ -205,7 +204,7 @@ class bttkm:
             GG = np.sum(compute_H_left(Phi, W_D, Sigma, N), axis=0)
             err = float(np.sum(YY + YG + GG))
 
-            if it > 5 and  precision_update:
+            if it > 4 and  precision_update:
                 a_N = a0 + (N / 2)
                 b_N = b0 + (0.5 * err)
             else:
@@ -221,14 +220,15 @@ class bttkm:
             is_last_iter = (it == max_iter - 1) or (abs(LBRelChan) < lower_bound_tol and it > 5)
 
 
-            if it > 0 and it % 10 == 0 and prune_rank and not is_last_iter:
+            # if it > 0 and it % 10 == 0 and prune_rank and not is_last_iter:
+            if  it> 4 and prune_rank:
                 for d in range(1, D):
                    
                     stack = np.hstack((tt_core_unfolding(W_D[d-1], mode=3)[0],
                                        tt_core_unfolding(W_D[d], mode=1)[0]))
                     comPower = np.diag(stack @ stack.T)
                     var_explained = comPower / np.sum(comPower) * 100
-                    keep_R = var_explained >= 1e-5
+                    keep_R = var_explained >= rank_tol
                     if not np.any(keep_R):
                         keep_R[np.argmax(comPower)] = True
 
@@ -367,7 +367,6 @@ class bttkm:
                     ax.spines["top"].set_visible(False)
                     ax.spines["right"].set_visible(False)
                     plt.tight_layout()
-                    plt.savefig("elbo.png", dpi=300)
                     plt.savefig("elbo.pdf")
                     plt.show()
         self.W_D = W_D

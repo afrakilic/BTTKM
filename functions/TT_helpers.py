@@ -422,3 +422,6 @@ def initialize_tt_cores(N=10, D=4, I=8, R=10, epsilon=1e-5):
     for d in range(1, len(W) - 1):
         W[d] = np.transpose(W[d].reshape(I, R, R, order="F"), (1, 0, 2))  # (R, I, R)
     return W
+
+def safelog(x):
+    return np.log(np.clip(x, 1e-10, 1e10))  # x to range [1e-10, 1e10]
