@@ -2,19 +2,17 @@
 Runs the BTTKM experiments (airfoil, energy, yacht, concrete).
 
 Usage (from the repo root):
-    python experiments.py [--datasets yacht concrete] [--plot] [--mc-samples 2000] [--no-mc]
+    python experiments.py [--datasets yacht concrete] [--mc-samples 2000] [--no-mc]
 
-Outputs (results/):
+Output (results/):
     per_run_results.csv   per-run RMSE, NLL, coverage (analytic + MC), runtime, avg_eff_rank
-    summary.json          mean/std per dataset and the hyperparameters
-    raw/<dataset>.npz     predictions, W_D, lambdas, deltas of the last run
 
-Tables are made from these files by results.py.
+Tables are made from this file by results.py.
 bttkm.train() must return (W_D, lambdas, deltas, tau, avg_eff_rank), where avg_eff_rank is the
 mean of the D-1 inner TT ranks after pruning.
 """
 
-import os, sys, json, argparse
+import os, sys, argparse
 
 sys.path.append(os.getcwd())
 from config import *  # noqa: F401,F403  (provides np, pd, time, ...)
@@ -117,7 +115,7 @@ def mc_metrics(y_samples, y_true):
     rmse = float(np.sqrt(np.mean((mu - y_true) ** 2)))
     nll = float(np.mean(0.5 * np.log(2 * np.pi * sd**2) + 0.5 * (y_true - mu) ** 2 / sd**2))
     cov = float(np.mean((y_true >= mu - N_STD * sd) & (y_true <= mu + N_STD * sd)))
-    return rmse, nll, cov, mu, sd
+    return rmse, nll, cov
 
 
 def load_dataset(cfg):
@@ -132,7 +130,6 @@ def run_dataset(name, cfg, mc_samples=MC_SAMPLES):
     hp = {**COMMON, **cfg}
     X, y = load_dataset(cfg)
     rows = []
-    last = {}
 
     for i in range(N_RUNS):
         t0 = time.time()
@@ -202,23 +199,16 @@ def run_dataset(name, cfg, mc_samples=MC_SAMPLES):
             y_s, _ = mc_predictive_samples(model, X_test, hp["input_dimension"],
                                            n_samples=mc_samples, seed=1000 + i)
             y_s = y_s * y_std + y_mean                      # back to original scale
-            mc_rmse, mc_nll, mc_cov, mc_mu, mc_sd = mc_metrics(y_s, y_test)
+            mc_rmse, mc_nll, mc_cov = mc_metrics(y_s, y_test)
             row.update(mc_rmse=mc_rmse, mc_nll=mc_nll, mc_coverage=mc_cov,
                        mc_runtime_s=time.time() - t1)
             msg += (f"\n        MC({mc_samples}): RMSE={mc_rmse:.4f}  NLL={mc_nll:.4f}  "
                     f"cov={mc_cov*100:.1f}%  ({row['mc_runtime_s']:.1f}s)")
-            last_mc = dict(mc_mean=mc_mu, mc_std=mc_sd)
-        else:
-            last_mc = {}
 
         rows.append(row)
         print(msg)
 
-        last = dict(y_test=y_test, pred_mean=pred_mean_u, pred_std=pred_std_u,
-                    W_D=np.asarray(W_D, dtype=object), lambdas=np.asarray(lambdas, dtype=object),
-                    deltas=np.asarray(deltas, dtype=object), **last_mc)
-
-    return rows, last, hp
+    return rows
 
 
 def main():
@@ -229,32 +219,17 @@ def main():
     parser.add_argument("--no-mc", action="store_true", help="skip Monte Carlo evaluation")
     args = parser.parse_args()
 
-    os.makedirs(os.path.join(RESULTS_DIR, "raw"), exist_ok=True)
-    all_rows, summary = [], {}
+    os.makedirs(RESULTS_DIR, exist_ok=True)
+    out_path = os.path.join(RESULTS_DIR, "per_run_results.csv")
+    all_rows = []
 
     for name in args.datasets:
-        rows, last, hp = run_dataset(name, DATASETS[name],
-                                   mc_samples=0 if args.no_mc else args.mc_samples)
-        all_rows += rows
-        d = pd.DataFrame(rows)
-        summary[name] = {
-            "hyperparameters": {k: v for k, v in hp.items() if k != "path"},
-            "n_runs": N_RUNS,
-            "total_runtime_s": float(d.runtime_s.sum()),
-            **{f"{m}_{s}": float(fn(d[m].values))
-               for m in [c for c in ("rmse", "nll", "coverage", "mc_rmse", "mc_nll", "mc_coverage",
-                                     "avg_eff_rank")
-                         if c in d.columns]
-               for s, fn in (("mean", np.mean), ("std", np.std))},  # np.std: ddof=0
-        }
-        np.savez(os.path.join(RESULTS_DIR, "raw", f"{name}.npz"), **last)
-
+        all_rows += run_dataset(name, DATASETS[name],
+                                mc_samples=0 if args.no_mc else args.mc_samples)
         # save after every dataset so partial progress isn't lost
-        pd.DataFrame(all_rows).to_csv(os.path.join(RESULTS_DIR, "per_run_results.csv"), index=False)
-        with open(os.path.join(RESULTS_DIR, "summary.json"), "w") as f:
-            json.dump(summary, f, indent=2)
+        pd.DataFrame(all_rows).to_csv(out_path, index=False)
 
-    print(f"\nSaved results to {RESULTS_DIR}/ -- now run: python results.py")
+    print(f"\nSaved results to {out_path} -- now run: python results.py")
 
 
 if __name__ == "__main__":

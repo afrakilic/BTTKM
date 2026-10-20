@@ -5,41 +5,14 @@ Usage:
     python results.py
 
 Reads  results/per_run_results.csv
-Writes results/tables/{general,uq}.{csv,md,tex}  and prints both tables.
+Prints the general-performance and uncertainty-quantification tables (nothing is saved).
 """
 
 import os
 import pandas as pd
 
 RESULTS_DIR = "results"
-TABLE_DIR = os.path.join(RESULTS_DIR, "tables")
 ORDER = ["airfoil", "energy", "yacht", "concrete"]
-
-
-def to_md(df):
-    """Markdown table without needing `tabulate`."""
-    df = df.reset_index(drop=True)
-    cols = [str(c) for c in df.columns]
-    lines = ["| " + " | ".join(cols) + " |", "|" + "|".join("---" for _ in cols) + "|"]
-    for _, r in df.iterrows():
-        lines.append("| " + " | ".join(str(v) for v in r.values) + " |")
-    return "\n".join(lines)
-
-
-def to_tex(df, caption, label=None):
-    """LaTeX table without needing `jinja2`."""
-    df = df.reset_index(drop=True)
-    esc = lambda t: str(t).replace("±", "$\\pm$").replace("%", "\\%")
-    cols = [str(c) for c in df.columns]
-    out = ["\\begin{table}[ht]", "\\centering", f"\\caption{{{caption}}}"]
-    if label:
-        out.append(f"\\label{{{label}}}")
-    out += ["\\begin{tabular}{l" + "c" * (len(cols) - 1) + "}", "\\hline",
-            " & ".join(esc(c) for c in cols) + " \\\\", "\\hline"]
-    for _, r in df.iterrows():
-        out.append(" & ".join(esc(v) for v in r.values) + " \\\\")
-    out += ["\\hline", "\\end{tabular}", "\\end{table}"]
-    return "\n".join(out)
 
 
 def ms(series, scale=1.0, dec=3):
@@ -87,7 +60,6 @@ def main():
     print(bar)
     tot = df.runtime_s.sum() + (df.mc_runtime_s.sum() if has_mc else 0)
     print(f"\nTotal runtime across all datasets: {tot:.2f} seconds")
-    print(f"Tables saved to {TABLE_DIR}/")
 
 
 if __name__ == "__main__":
