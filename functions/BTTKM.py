@@ -60,7 +60,7 @@ class bttkm:
         seed: int = 2,
         lambda_update: bool = True,
         prune_rank: bool = False,  # Optional rank pruning
-        rank_tol: int = 1e-5,  # this is threshold to keep the certain rank (i.e. columns in factor matrices)in terms of explained variance
+        rank_tol: int = 1e-3,  
         delta_update: bool = True,
         precision_update: bool = True,
         lower_bound_tol: int = 1e-4,
@@ -408,7 +408,8 @@ class bttkm:
                 )
 
             I = input_dimension
-            R = self.avg_effective_rank
+            # R = self.avg_effective_rank
+            n_params = sum(W.size for W in self.W_D)   # sum_d R_d * M_d * R_{d+1}
             X = features
             N = X.shape[0]
             D = X.shape[1]
@@ -416,7 +417,6 @@ class bttkm:
 
             # Feature map
             Phi = pure_power_features_TT(X,Ms=Ms) 
-            # Phi = legendre_basis(X, I=I)
             predictions = compute_G_left(Phi, self.W_D, N)
 
         #  Uncertainty Quantification 
@@ -438,7 +438,8 @@ class bttkm:
 
                 GL_env = compute_G_left([Phi[d]], [self.W_D[d]], N, G0=GL_env)
 
-            S_diag = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (diag_sum / (D * I * (R**2))))
+            # S_diag = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (diag_sum / (D * I * (R**2))))
+            S_diag = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (diag_sum / n_params))
             std_dev = np.sqrt(S_diag)
 
             if true_values is not None:

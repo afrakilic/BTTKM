@@ -29,9 +29,9 @@ y = np.where(y > 0, 1, -1)
 input_dimension = 40
 max_rank = 3
 
-a, b = 1e+1, 1e-1
-c, d = 1e+0, 1e-1
-g, h = 1e-1, 1e-1
+a, b = 1e-0, 1e-3
+c, d = 1e-6, 1e-6
+g, h = 1e-6, 1e-6
 
 # Store the MSE results
 mse_values = []
@@ -43,6 +43,7 @@ start_time = time.time()
 for i in range(10):
     try:
         # Split the data
+
         np.random.seed(i)
         indices = np.random.permutation(len(X))
         split_index = int(0.90 * len(X))  # 90% for training, 10% for testing
@@ -130,7 +131,7 @@ print(f"Mean Effective R: {effective_r}, std: {effective_r_std}")
 print(f"Mean NLL: {mean_nll}, std_nll: {std_nll} ")
 
 
-# Total runtime for 10 runs: 10209.91 seconds
-# Mean Missclassication: 0.14691576387353528, Standard Deviation of Missclassication: 0.0051016754619767745
+# Total runtime for 10 runs: 4387.18 seconds
+# Mean Missclassication: 0.1465399071412779, Standard Deviation of Missclassication: 0.005561512541861454
 # Mean Effective R: 3.0, std: 0.0
-# Mean NLL: 0.33232763453959085, std_nll: 0.007329710116867951 
+# Mean NLL: 0.33064855465411663, std_nll: 0.00822374976645222 

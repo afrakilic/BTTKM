@@ -14,9 +14,7 @@ from functions.TT_helpers import (generate_tt_cores,
                                   pure_power_features_TT)
 from functions.BTTKM import bttkm
 
-# ----------------------------------------------------------------------
-# Data
-# ----------------------------------------------------------------------
+# Ground Truth
 D = 4
 I_true = 3
 R_true = 3
@@ -25,21 +23,16 @@ Ms = [I_true] * D
 Rs = [1] + [R_true] * (D - 1) + [1]
 N = 100
 
-# ----------------------------------------------------------------------
-# Initialisation / configuration
-# ----------------------------------------------------------------------
+#Initialize 
 I_init = 5
 R_init = 5
 
 rng = np.random.default_rng(42)
 X = rng.standard_normal((N, D))
-
-# the true cores are placed in cores with I_init features,
-# so that only the first I_true features are nonzero
 W_small = generate_tt_cores(D=D, Ms=Ms, Rs=Rs, seed=1)
 W_D_true = [np.zeros((Rs[d], I_init, Rs[d + 1])) for d in range(D)]
 for d in range(D):
-    W_D_true[d][:, :I_true, :] =  5*W_small[d]
+    W_D_true[d][:, :I_true, :] =  10*W_small[d]
 Phi = pure_power_features_TT(X, Ms=[I_init] * D)          # model's feature map
 
 y = compute_G_left(Phi, W_D_true, N) + 1e-3 * rng.standard_normal((N, 1))
@@ -83,7 +76,7 @@ def run(cfg):
         prune_rank=False
     )
 
-    # Predict (mse is returned by the predict function)
+    # Predict 
     prediction_mean, prediction_std, mse = model.predict(
         features=X, input_dimension=I_init, rank=R_init
     )
@@ -97,14 +90,13 @@ def run(cfg):
                 std=np.asarray(prediction_std).ravel())
 
 
-# ----------------------------------------------------------------------
 # Variance explained (%) and precisions
-# ----------------------------------------------------------------------
-COLOR_BAR  = "#8C8C8C"   # medium gray, bars (variance explained)
-COLOR_LINE = "#000000"   # black, line (log precision)
+
+COLOR_BAR  = "#8C8C8C"   
+COLOR_LINE = "#000000"  
 STYLE = {
-    "font.family": "STIXGeneral",   # Times-like text, matches LaTeX papers
-    "mathtext.fontset": "stix",     # renders bold Greek (boldsymbol lambda / delta)
+    "font.family": "STIXGeneral",   
+    "mathtext.fontset": "stix",    
     "font.size": 13,
     "axes.titlesize": 15,
     "axes.labelsize": 14,
@@ -157,7 +149,7 @@ def _bar_figure(ve, logp, titles, xlabel, prec_label, fname):
             ax.set_ylim(0, ve_max)
             ax2.set_ylim(*p_lim)
             ax.set_xticks(x)
-            ax.set_xticklabels([str(k) for k in x])
+            ax.set_xticklabels([str(k+1) for k in x])
             ax.set_title(titles[i], pad=4)
 
             first, last = i == 0, i == P - 1
@@ -221,15 +213,15 @@ def variance_explained_tables(res, fname="variance_explained"):
                             for d in range(D)})
     feat_df.index.name = "feature index"
 
-    fmt = lambda x: f"{x:.3f}"
+    fmt = lambda x: f"{x:.17g}"
     with pd.option_context("display.width", 250, "display.max_columns", None):
         print("\nVariance explained per rank component (%)")
         print(rank_df.to_string(float_format=fmt))
         print("\nVariance explained per feature (%)")
         print(feat_df.to_string(float_format=fmt))
 
-    rank_df.to_csv(fname + "_rank.csv", float_format="%.3f")
-    feat_df.to_csv(fname + "_feature.csv", float_format="%.3f")
+    rank_df.to_csv(fname + "_rank.csv", float_format="%.17g")
+    feat_df.to_csv(fname + "_feature.csv", float_format="%.17g")
     return rank_df, feat_df
 
 
@@ -237,25 +229,52 @@ def plot_variance(res):
     W = res["W_D"]
     D = len(W)
 
-    # lambda: rank components of each TT rank, labelled lambda_2, ..., lambda_D
     _bar_figure(
         ve=[rank_variance_explained(W, d) for d in range(1, D)],
         logp=[np.log(res["lambdas"][d]) for d in range(1, D)],
-        titles=[rf"$\boldsymbol{{\lambda}}_{{{d+1}}}$" for d in range(1, D)],
+        titles=[rf"$\tilde{{\boldsymbol{{\lambda}}}}_{{{d+1}}}$" for d in range(1, D)],
         xlabel=r"$r_d$",
-        prec_label=r"$\log\,\boldsymbol{\lambda}_d$",
+        prec_label=r"$\log\,\tilde{\boldsymbol{\lambda}}_d$",
         fname="lambda_variance",
     )
 
-    # delta: features of core d
     _bar_figure(
         ve=[feature_variance_explained(W, d) for d in range(D)],
         logp=[np.log(res["deltas"][d]) for d in range(D)],
-        titles=[rf"$\boldsymbol{{\delta}}_{{{d+1}}}$" for d in range(D)],
+        titles=[rf"$\tilde{{\boldsymbol{{\delta}}}}_{{{d+1}}}$" for d in range(D)],
         xlabel=r"$m_d$",
-        prec_label=r"$\log\,\boldsymbol{\delta}_d$",
+        prec_label=r"$\log\,\tilde{\boldsymbol{\delta}}_d$",
         fname="delta_variance",
     )
+
+def precision_tables(res, fname="precisions"):
+    """
+    Tables of posterior mean precisions E[lambda_d] (d = 2, ..., D) and E[delta_d] (d = 1, ..., D),
+    one column per TT rank / core, 1-based component index. Printed and saved as CSV.
+    """
+    lambdas, deltas = res["lambdas"], res["deltas"]
+    D = len(res["W_D"])
+
+    lam_df = pd.DataFrame({f"lambda_{d + 1}": pd.Series(np.ravel(lambdas[d]))
+                           for d in range(1, D)})
+    lam_df.index = lam_df.index + 1
+    lam_df.index.name = "rank index"
+
+    del_df = pd.DataFrame({f"delta_{d + 1}": pd.Series(np.ravel(deltas[d]))
+                           for d in range(D)})
+    del_df.index = del_df.index + 1
+    del_df.index.name = "feature index"
+
+    fmt = lambda x: f"{x:.3e}"
+    with pd.option_context("display.width", 250, "display.max_columns", None):
+        print("\nPosterior mean rank precisions E[lambda_d]")
+        print(lam_df.to_string(float_format=fmt))
+        print("\nPosterior mean feature precisions E[delta_d]")
+        print(del_df.to_string(float_format=fmt))
+
+    lam_df.to_csv(fname + "_lambda.csv", float_format="%.6e")
+    del_df.to_csv(fname + "_delta.csv", float_format="%.6e")
+    return lam_df, del_df
 
 
 if __name__ == "__main__":
@@ -264,5 +283,9 @@ if __name__ == "__main__":
     print(f"\nRMSE: {res['rmse']:.4f}")
 
     variance_explained_tables(res)
+    precision_tables(res)
     plot_predictive(res)
     plot_variance(res)
+
+
+

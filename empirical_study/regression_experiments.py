@@ -170,8 +170,7 @@ def run_dataset(name, cfg, mc_samples=MC_SAMPLES):
             lambda_update=True,
             delta_update=True,
             plot_results=False,
-            prune_rank=True,
-            rank_tol= 1e-3
+            prune_rank=True
         )
 
         # predict
@@ -225,7 +224,6 @@ def run_dataset(name, cfg, mc_samples=MC_SAMPLES):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--datasets", nargs="+", default=list(DATASETS), choices=list(DATASETS))
-    parser.add_argument("--plot", action="store_true", help="show diagnostic plots")
     parser.add_argument("--mc-samples", type=int, default=MC_SAMPLES,
                         help="Monte Carlo samples per test set (default %(default)s)")
     parser.add_argument("--no-mc", action="store_true", help="skip Monte Carlo evaluation")
@@ -235,7 +233,7 @@ def main():
     all_rows, summary = [], {}
 
     for name in args.datasets:
-        rows, last, hp = run_dataset(name, DATASETS[name], plot=args.plot,
+        rows, last, hp = run_dataset(name, DATASETS[name],
                                    mc_samples=0 if args.no_mc else args.mc_samples)
         all_rows += rows
         d = pd.DataFrame(rows)
