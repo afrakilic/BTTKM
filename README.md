@@ -1,84 +1,66 @@
-# Interpretable Bayesian Tensor Network Kernel Machines with Automatic Rank and Feature Selection
+# Regularized Bayesian Tensor Train Kernel Machines
 
-[![Source Code License](https://img.shields.io/badge/license-GPL-blueviolet)](https://github.com/afrakilic/BTN-Kernel-Machines/blob/main/LICENSE)
+[![Source Code License](https://img.shields.io/badge/license-GPL-blueviolet)](https://github.com/afrakilic/BTTKM/blob/main/LICENSE)
 
+Code for the paper *Regularized Bayesian Tensor Train Kernel Machines* (Afra Kilic and Kim Batselier).
 
-This repository contains the source code used to produce the results obtained in [Interpretable Bayesian Tensor Network Kernel Machines with Automatic Rank and Feature Selection]() submitted to [Journal of Machine Learning Research](https://www.jmlr.org/). This project sets fixed random seeds to promote reproducibility. All experiments were conducted on the following computer:
-
-- **Device**: MacBook Pro 
-- **Chip**: Apple M2 Pro 
-- **Memory**: 16 GB LPDDR5
-- **Operating System**: macOS 15.5 
-
-However, please note that some computations may still yield slightly different results across operating systems (e.g., macOS vs Windows), hardware architectures, or Python library versions.
-
-
-In this work we propose a fully probabilistic framework that uses sparsity-inducing hierarchical priors on Tensor Network factors to automatically infer tensor rank and feature dimensions, while also identifying the most relevant features for prediction, thereby enhancing model interpretability.
-
-If you find the paper or this repository helpful in your publications, please consider citing it.
-
-```bibtex
-@misc{kilic2025interpretablebayesiantensornetwork,
-      title={Interpretable Bayesian Tensor Network Kernel Machines with Automatic Rank and Feature Selection}, 
-      author={Afra Kilic and Kim Batselier},
-      year={2025},
-      eprint={2507.11136},
-      archivePrefix={arXiv},
-      primaryClass={stat.ML},
-      url={https://arxiv.org/abs/2507.11136}, 
-}
-```
-
----
+BTT-KM is a Bayesian tensor-network kernel machine in which the model weights form a tensor
+train (TT). Hierarchical ARD-type priors on the TT cores infer the TT ranks and the feature
+dimensions from the data, and mean-field variational inference gives a Bayesian alternating
+least squares algorithm with the same cost as its deterministic counterpart, together with a
+closed-form predictive distribution.
 
 ## Installation
 
-
-
-Make sure you have Python **3.10.16** installed.
-
-Install dependencies:
+Python 3.10 was used.
 
 ```bash
-git clone https://github.com/afrakilic/BTN-Kernel-Machines
-cd BTN-Kernel-Machines
-```
-
-and then install the required packages by, e.g., running
-
-```bash
+git clone https://github.com/afrakilic/BTTKM.git
+cd BTTKM
 pip install -r requirements.txt
 ```
 
-### Structure
+## Repository structure
 
-The repository code is structured in the following way
+```
+bttkm/          the model
+  model.py        BTTKM class: train, predict
+  tt.py           feature map, core unfoldings and TT contractions
+experiments/
+  synthetic.py    Section 4: synthetic experiment (Figures 3 and 4)
+```
 
-- **`data/`**  
-  Contains all the UCI benchmark datasets used in the experiments.
+## Usage
 
-- **`figure_and_tables/`**  
-  Includes the code for running experiments that generate the figures and tables shown in **Section 4** of the paper, **except for Table 4**.
+```python
+from bttkm import BTTKM
 
-- **`empirical_study/`**  
-  Contains the experiments described in **Section 4.4**, which are reported in **Table 4**.
+model = BTTKM().train(X_train, y_train, M=20, R=5,
+                      a0=1e-3, b0=1e-3, c0=1e-6, d0=1e-6, g0=1e-6, h0=1e-6, max_iter=50)
+mean, std = model.predict(X_test)        # Student's-t predictive, nu = 2 * model.a
+print(model.effective_ranks)             # inferred TT ranks R_2 ... R_D
+```
 
-- **`functions/`**  
-  Includes the implementation of **Bayesian Tensor Network Kernel Machines (BTN-KM)** and helper functions organized in the `utils` module.
-## License
+`y_train` is a column vector of shape (N, 1). Set `prune_rank=True` to remove rank components
+that explain less than `rank_tol` % of the variance during training.
 
-The repository is provided under the GNU General Public License. See the [LICENSE](https://github.com/afrakilic/BTN-Kernel-Machines/blob/main/LICENSE) file included with this repository.
+## Reproducing the paper
 
----
+```bash
+python experiments/synthetic.py
+```
 
-## Author
+This prints the variance explained and the posterior precisions of every rank and feature
+component, and shows Figures 3 and 4 together with the lower bound and the predictions.
+The experiment uses fixed random seeds and was run on a MacBook Pro (Apple M2 Pro, 16 GB,
+macOS 15.5); other operating systems, hardware or library versions may give slightly
+different numbers.
 
-[Afra KILIC](https://www.tudelft.nl/staff/h.a.kilic/), PhD Candidate [H.A.Kilic@tudelft.nl | hafra.kilic@gmail.com]
+## License and author
 
-> [Delft Center for Systems and Control](https://www.tudelft.nl/en/3me/about/departments/delft-center-for-systems-and-control/) in [Delft University of Technology](https://www.tudelft.nl/en/)
+GNU General Public License, see [LICENSE](LICENSE).
 
-> This research is part of the project Sustainable learning for Artificial Intelligence from noisy large-scale data (with project number VI.Vidi.213.017) which is financed by the Dutch Research Council (NWO).
+[Afra Kilic](https://www.tudelft.nl/staff/h.a.kilic/), PhD candidate, [Delft Center for Systems and Control](https://www.tudelft.nl/en/3me/about/departments/delft-center-for-systems-and-control/), Delft University of Technology (H.A.Kilic@tudelft.nl | hafra.kilic@gmail.com).
+This research is part of the project Sustainable learning for Artificial Intelligence from noisy large-scale data (project number VI.Vidi.213.017), financed by the Dutch Research Council (NWO).
 
-Copyright (c) 2025 Afra Kilic.
-
-Copyright notice: Technische Universiteit Delft hereby disclaims all copyright interest. 
+Copyright (c) 2025 Afra Kilic. Technische Universiteit Delft hereby disclaims all copyright interest.
