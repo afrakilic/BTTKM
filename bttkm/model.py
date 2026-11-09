@@ -263,6 +263,5 @@ class BTTKM:
             quad += np.sum((g @ self.V[d]) * g, axis=1)
             G_left = contract_left([Phi[d]], [self.W_D[d]], N, G0=G_left)
 
-        n_params = sum(W.size for W in self.W_D)
-        S = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (quad / n_params))
+        S = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (quad))
         return mean, np.sqrt(S)
