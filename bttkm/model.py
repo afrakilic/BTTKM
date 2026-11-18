@@ -4,8 +4,8 @@ Model: y = <Phi(x), W> + e, with the weight tensor W in tensor-train (TT) format
 cores W^(d) of shape (R_d, M_d, R_{d+1}), R_1 = R_{D+1} = 1.
 
 Priors (all with Gamma hyperpriors):
-  - lambda_d: one precision per component of TT rank R_d (shared by cores d-1 and d) -> prunes the ranks,
-  - delta_d:  one precision per feature of core d                                     -> prunes feature dims,
+  - lambda_d: one precision per component of TT rank R_d (shared by cores d-1 and d) -> truncates the ranks,
+  - delta_d:  one precision per feature of core d                                     -> shrinks irrelevant features,
   - tau:      noise precision.
 
 `train` runs mean-field variational inference: a Bayesian ALS sweep over the
@@ -62,7 +62,7 @@ class BTTKM:
         c0, d0    : Gamma prior of the rank precisions lambda
         g0, h0    : Gamma prior of the feature precisions delta
         init_seed : seed of the random initial cores (entries ~ N(0, 1))
-        rank_tol  : rank components explaining less than this % of the variance are pruned
+        rank_tol  : rank components contributing less than this % of the variance are truncated
         The precisions are only updated from iteration 6 on (it > 4).
 
         After training, the model stores:
@@ -82,6 +82,7 @@ class BTTKM:
         d0s = [d0 * np.ones(r) for r in Rs]; dNs = [d.copy() for d in d0s]
         deltas = [g / h for g, h in zip(g0s, h0s)]
         lambdas = [c / d for c, d in zip(c0s, d0s)]
+        lambdas[0], lambdas[D] = np.ones(1), np.ones(1)
 
         # Initial cores and covariances
         Sigma = [1e-5 * np.eye(Rs[d] * Ms[d] * Rs[d + 1]) for d in range(D)]
@@ -198,7 +199,7 @@ class BTTKM:
                                        a_N, b_N, b0, cNs, dNs, d0s, gNs, hNs, h0s)
 
             # ---- Convergence check ----
-            rel_change = (LB[it] - LB[it - 1]) / LB[2] if it > 2 else np.nan
+            rel_change = (LB[it] - LB[it - 1]) / abs(LB[it - 1]) if it > 0 else np.nan
             pbar.set_postfix({"RelChan": f"{rel_change:.2e}", "err": f"{err:.1e}"})
             if it > 5 and abs(rel_change) < lower_bound_tol:
                 if verbose:
@@ -242,10 +243,10 @@ class BTTKM:
         return t1 + t2 + t3 + t4 + t5 + t6
 
     def predict(self, X):
-        """Mean (N, 1) and standard deviation (N,) of the Student's-t predictive (nu = 2 * a_N).
-
-        The summed quadratic terms g^T Sigma g are divided by the number of core
-        entries sum_d R_d M_d R_{d+1} of the trained model.
+        """Mean (N, 1) and standard deviation (N,) of the Student's-t predictive of Eq. (40):
+          y_i ~ T(y~_i, S_i, nu),  nu = 2 a_N,
+          S_i^-1 = b_N / a_N + sum_d E[g_d(x_i)]^T Sigma_d E[g_d(x_i)],
+          Var(y_i | y) = nu / (nu - 2) * S_i^-1.
         """
         N, D = X.shape
         Phi = pure_power_features(X, [self.M] * D)

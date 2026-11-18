@@ -1,15 +1,16 @@
 """Section 4: effect of the rank and feature precisions on synthetic data (Figures 3 and 4).
 
 Ground truth: D = 4 inputs, TT ranks 3 and 3 active features per core (out of 5),
-cores drawn from N(0, 1) and scaled by 10, N = 100 samples, noise std 1e-3.
+cores drawn from N(0, 1), N = 100 samples, noise std 1e-3.
 The model starts from R = M = 5 and runs 100 iterations without rank pruning.
 
-Prints the RMSE, the variance explained (%) per rank / feature component and
+Prints the RMSE, the variance contribution (%) per rank / feature component and
 the posterior mean precisions, and shows:
   - the variational lower bound,
   - the predictions with +-2 std bounds,
-  - Figure 3: variance explained per rank component with log lambda_d,
-  - Figure 4: variance explained per feature with log delta_d.
+  - Figure 3: variance contribution per rank component with log lambda_d,
+  - Figure 4: variance contribution per feature with log delta_d.
+Figures 3 and 4 are also saved to results/ as PDF files.
 """
 
 import sys
@@ -22,6 +23,8 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+OUT = ROOT / "results"
+OUT.mkdir(exist_ok=True)
 from bttkm import BTTKM
 from bttkm.tt import random_tt_cores, contract_left, pure_power_features
 
@@ -29,13 +32,13 @@ from bttkm.tt import random_tt_cores, contract_left, pure_power_features
 D, M_TRUE, R_TRUE, N = 4, 3, 3, 100
 M_INIT, R_INIT = 5, 5
 
-rng = np.random.default_rng(42)
+rng = np.random.default_rng(1)
 X = rng.standard_normal((N, D))
 Rs_true = [1] + [R_TRUE] * (D - 1) + [1]
 W_small = random_tt_cores([M_TRUE] * D, Rs_true, seed=1)
 W_true = [np.zeros((Rs_true[d], M_INIT, Rs_true[d + 1])) for d in range(D)]
 for d in range(D):
-    W_true[d][:, :M_TRUE, :] = 10 * W_small[d]  # only the first 3 features are active
+    W_true[d][:, :M_TRUE, :] =  W_small[d]  # only the first 3 features are active
 Phi = pure_power_features(X, [M_INIT] * D)
 y = contract_left(Phi, W_true, N) + 1e-3 * rng.standard_normal((N, 1))
 
@@ -44,7 +47,7 @@ start = time.time()
 model = BTTKM().train(
     X, y, M=M_INIT, R=R_INIT,
     a0=1e-3, b0=1e-3, c0=1e-6, d0=1e-6, g0=1e-6, h0=1e-6,
-    max_iter=100, lower_bound_tol=1e-10, prune_rank=False,
+    max_iter=100, lower_bound_tol=0, prune_rank=False,
 )
 mean, std = model.predict(X)
 rmse = np.sqrt(np.mean((mean - y) ** 2))
@@ -53,14 +56,14 @@ print(f"\nRMSE: {rmse:.4f}   runtime: {time.time() - start:.1f}s")
 W, lambdas, deltas = model.W_D, model.lambdas, model.deltas
 
 
-def rank_variance_explained(d):
-    """% variance explained per component of TT rank R_{d+1} (cores d-1 and d), as used for pruning."""
+def rank_variance_contribution(d):
+    """% variance contribution per component of TT rank R_{d+1} (cores d-1 and d), as used for pruning."""
     p = np.sum(W[d - 1] ** 2, axis=(0, 1)) + np.sum(W[d] ** 2, axis=(1, 2))
     return p / np.sum(p) * 100
 
 
-def feature_variance_explained(d):
-    """% variance explained per feature (lateral slice) of core d."""
+def feature_variance_contribution(d):
+    """% variance contribution per feature (lateral slice) of core d."""
     q = np.sum(W[d] ** 2, axis=(0, 2))
     return q / np.sum(q) * 100
 
@@ -74,10 +77,10 @@ def table(columns, index_name, fmt):
         print(df.to_string(float_format=fmt))
 
 
-print("\nVariance explained per rank component (%)")
-table({f"lambda_{d + 1}": rank_variance_explained(d) for d in range(1, D)}, "rank index", lambda x: f"{x:.17g}")
-print("\nVariance explained per feature (%)")
-table({f"delta_{d + 1}": feature_variance_explained(d) for d in range(D)}, "feature index", lambda x: f"{x:.17g}")
+print("\nVariance contribution per rank component (%)")
+table({f"lambda_{d + 1}": rank_variance_contribution(d) for d in range(1, D)}, "rank index", lambda x: f"{x:.17g}")
+print("\nVariance contribution per feature (%)")
+table({f"delta_{d + 1}": feature_variance_contribution(d) for d in range(D)}, "feature index", lambda x: f"{x:.17g}")
 print("\nPosterior mean rank precisions E[lambda_d]")
 table({f"lambda_{d + 1}": np.ravel(lambdas[d]) for d in range(1, D)}, "rank index", lambda x: f"{x:.3e}")
 print("\nPosterior mean feature precisions E[delta_d]")
@@ -116,8 +119,9 @@ with plt.rc_context(STYLE):
     plt.tight_layout()
 
 
-def bar_figure(ve, logp, titles, xlabel, prec_label):
-    """One panel per TT rank / core: variance explained (bars, left axis) and log precisions (line, right axis)."""
+def bar_figure(ve, logp, titles, xlabel, prec_label, filename):
+    """One panel per TT rank / core: variance contribution (bars, left axis) and log precisions (line, right axis).
+    The figure is saved to results/<filename>."""
     P = len(titles)
     ve_max = min(100, np.nanmax([np.nanmax(v) for v in ve]) * 1.1)
     all_p = np.concatenate([np.ravel(p) for p in logp])
@@ -154,22 +158,25 @@ def bar_figure(ve, logp, titles, xlabel, prec_label):
                 ax2.tick_params(axis="y", length=0)
         plt.tight_layout(rect=(0, 0.07, 1, 1))
         fig.supxlabel(xlabel, y=0.02, fontsize=14)
+        fig.savefig(OUT / filename, bbox_inches="tight")
 
 
 # Figure 3: rank components
 bar_figure(
-    ve=[rank_variance_explained(d) for d in range(1, D)],
+    ve=[rank_variance_contribution(d) for d in range(1, D)],
     logp=[np.log(lambdas[d]) for d in range(1, D)],
     titles=[rf"$\tilde{{\boldsymbol{{\lambda}}}}_{{{d + 1}}}$" for d in range(1, D)],
     xlabel=r"$r_d$",
     prec_label=r"$\log\,\tilde{\boldsymbol{\lambda}}_d$",
+    filename="figure3_rank_components.pdf",
 )
 # Figure 4: feature components
 bar_figure(
-    ve=[feature_variance_explained(d) for d in range(D)],
+    ve=[feature_variance_contribution(d) for d in range(D)],
     logp=[np.log(deltas[d]) for d in range(D)],
     titles=[rf"$\tilde{{\boldsymbol{{\delta}}}}_{{{d + 1}}}$" for d in range(D)],
     xlabel=r"$m_d$",
     prec_label=r"$\log\,\tilde{\boldsymbol{\delta}}_d$",
+    filename="figure4_feature_components.pdf",
 )
 plt.show()
