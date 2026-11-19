@@ -24,8 +24,8 @@ from bttkm import BTTKM
 # n_features: number of input columns (the next column is the label)
 # Run order when no argument is given: Adult first, then Spambase.
 DATASETS = {
-    # "adult":    dict(n_features=96, M=40, R=3, a0=1e0, c0=1e-6),
-    "spambase": dict(n_features=57, M=30, R=3, a0=1e-1, c0=1e-5),
+    "adult":    dict(n_features=96, M=40, R=3, a0=1e0, c0=1e-6),
+    "spambase": dict(n_features=57, M=30, R=5, a0=1e-1, c0=1e-5),
 }
 
 
@@ -83,11 +83,11 @@ for name, r in results.items():
     print(f"Time per run:      {r['run_time'][0]:.2f} ± {r['run_time'][1]:.2f} s")
 
 
-# spambase: 10 runs, total runtime 990.37 s
-# Misclassification: 0.1000 ± 0.0186
-# NLL:               0.2719 ± 0.0365
-# Effective R:       2.28 ± 0.14
-# Time per run:      99.04 ± 4.26 s
+# spambase: 10 runs, total runtime 2665.48 s
+# Misclassification: 0.0941 ± 0.0357
+# NLL:               0.2571 ± 0.0447
+# Effective R:       2.83 ± 0.20
+# Time per run:      266.55 ± 12.58 s
 
 
 # adult: 10 runs, total runtime 24462.38 s
